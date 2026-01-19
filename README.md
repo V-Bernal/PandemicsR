@@ -5,7 +5,7 @@ Voter and Schelling combined model
 ```{r}
 install.packages("devtools")
 library(devtools)
-install_github("V-Bernal/PandemicsR", subdir="PandemicsR")
+install_github("V-Bernal/PandemicsR", subdir="PandemicsR-main")
 
 ```
-The script . 
+Run the script or shinny for testing. 
