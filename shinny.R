@@ -251,7 +251,7 @@ server <- function(input, output, session) {
 
     list(
       B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
-      opinions=opinions, opinions0=opinions0,
+      #opinions=opinions, opinions0=opinions0,
       opinion_history=opinion_history,
       num_opinions=num_opinions,members=members
     )
@@ -260,14 +260,14 @@ server <- function(input, output, session) {
   #==========================
   # --- Output ---
   #==========================
-  output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinions0, simData()$num_opinions) })
+  output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
   output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG, simData()$opinions, simData()$num_opinions) })
-  output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinions0, simData()$num_opinions) })
+  output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
   output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinions, simData()$num_opinions) })
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$opinion_history, simData()$num_opinions) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
-  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinions0, simData()$num_opinions, simData()$B0) })
+  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
   output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinions, simData()$num_opinions, simData()$B) })
 
 }
