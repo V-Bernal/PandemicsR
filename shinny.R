@@ -14,17 +14,17 @@ ui <- fluidPage(
       numericInput("m", "Number of groups", value = 3, min = 2),
       numericInput("timesteps", "Iterations", value = 1000),
 
-      sliderInput("lambda", "Init: Bipartite link density lambda", min = 0, step = 0.1, max = 1, value = 0.2),
-      sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.1, max = 1, value = 0.1),
+      sliderInput("lambda", "Init: Bipartite link density lambda", min = 0, step = 0.01, max = 1, value = 0.2),
+      sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.1),
 
-      #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.1, max = 1, value = 0.3),
-      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.1, max = 1, value = 0.5),
-      sliderInput("beta_plus", "Voter: beta_plus", min = 0, step = 0.1, max = 1, value = 0.7),
-      sliderInput("beta_minus", "Voter: beta_minus", min = 0, step = 0.1, max = 1, value = 0.2),
-      sliderInput("T_threshold", "Voter: T_threshold", min = 0, step = 0.1, max = 1, value = 0.5),
+      #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
+      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 1, value = 0.5),
+      sliderInput("beta_plus", "Voter: beta_plus", min = 0, step = 0.01, max = 1, value = 0.7),
+      sliderInput("beta_minus", "Voter: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
+      sliderInput("T_threshold", "Voter: T_threshold", min = 0, step = 0.01, max = 1, value = 0.5),
 
       checkboxInput("runVoter", "Voter model", value = TRUE),
-      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 2),
+      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
 
       checkboxInput("runSchelling", "Schelling model", value = TRUE),
       actionButton("runSim", "Run Simulation")
@@ -40,8 +40,8 @@ ui <- fluidPage(
         ),
         tabPanel("Voter dynamics",
                  plotOutput("histo"),
-                 plotOutput("fracPlot", width = "500px", height = "400px"),
-                 plotOutput("heatmapPlot", height = "350px")
+                 plotOutput("fracPlot", width = "500px", height = "400px")#,
+                 #plotOutput("heatmapPlot", height = "350px")
         ),
         tabPanel("Others",
                  plotOutput("histogramGroup0"),
@@ -104,6 +104,9 @@ server <- function(input, output, session) {
     Ri <- sapply(red_members, length)
     Bi <- sapply(blue_members, length)
     rig_dirty <- FALSE
+
+    event_counter <- 0
+    record_every <- 100
 
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -230,10 +233,18 @@ server <- function(input, output, session) {
         Bi[group_i] <- Bi[group_i]-1
         rig_dirty <- TRUE
       }
+
+      # ---- record step ----
+      event_counter <- event_counter + 1
+
+      if (event_counter %% record_every == 0) {
+        opinion_history <- cbind(opinion_history, opinions)
+      }
+
     }
 
     # Final opinion history
-    opinion_history <- cbind(opinion_history, opinions)
+    #opinion_history <- cbind(opinion_history, opinions)
 
     reconstruct_bipartite <- function(members, n, m) {
       i <- integer(0); j <- integer(0)
@@ -261,14 +272,15 @@ server <- function(input, output, session) {
   # --- Output ---
   #==========================
   output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG, simData()$opinion_history[,ncol( opinion_history)], simData()$num_opinions) })
+  output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
+                                                                   simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
   output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( opinion_history)], simData()$num_opinions) })
+  output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$opinion_history, simData()$num_opinions) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
-  output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
+  #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
   output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
-  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( opinion_history)], simData()$num_opinions, simData()$B) })
+  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$B) })
 
 }
 

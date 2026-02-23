@@ -58,6 +58,9 @@ Ri <- sapply(red_members, length)
 Bi <- sapply(blue_members, length)
 rig_dirty <- FALSE
 
+event_counter <- 0
+record_every <- 100
+
 #==========================
 # Combined Voter and Schelling model dynamics Gillespie algorithm
 #==========================
@@ -183,10 +186,20 @@ while (t < t_max) {
     Bi[group_i] <- Bi[group_i]-1
     rig_dirty <- TRUE
   }
+
+
+  # ---- record step ----
+  event_counter <- event_counter + 1
+
+  if (event_counter %% record_every == 0) {
+    opinion_history <- cbind(opinion_history, opinions)
+  }
+
+
 }
 
 # Final opinion history
-opinion_history <- cbind(opinion_history, opinions)
+#opinion_history <- cbind(opinion_history, opinions)
 
 reconstruct_bipartite <- function(members, n, m) {
   i <- integer(0); j <- integer(0)

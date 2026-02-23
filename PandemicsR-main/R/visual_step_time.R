@@ -28,8 +28,17 @@ visual_step_time <- function(opinion_history, num_opinions){
   axis(2)
   box()
 
-  frac <- apply(opinion_history, 2, function(x) prop.table(table(x)))
-  frac_mat <- matrix(unlist(frac), num_opinions, ncol(opinion_history) )
+  # frac <- apply(opinion_history, 2, function(x) prop.table(table(x)))
+  # frac_mat <- matrix(unlist(frac), num_opinions, ncol(opinion_history) )
+
+  levels <- sort(unique(as.vector(opinion_history)))
+  n_ind <- nrow(opinion_history)
+
+  frac_mat <- sapply(levels, function(op) {
+    colSums(opinion_history == op) / n_ind
+  })
+
+  frac_mat <- t(frac_mat)
 
   for (k in 1:num_opinions) {
     lines(x = 1:ncol(opinion_history), y = frac_mat[k, ],
