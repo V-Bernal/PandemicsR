@@ -15,7 +15,7 @@ ui <- fluidPage(
       numericInput("timesteps", "Iterations", value = 1000),
 
       sliderInput("lambda", "Init: Bipartite link density lambda", min = 0, step = 0.01, max = 1, value = 0.2),
-      sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.1),
+      sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
 
       #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 1, value = 0.5),
@@ -105,9 +105,11 @@ server <- function(input, output, session) {
     Bi <- sapply(blue_members, length)
     rig_dirty <- FALSE
 
+    #----- NEW
     event_counter <- 0
-    record_every <- 100
-
+    record_every <- n
+    members0<-members
+    
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
     #==========================
@@ -116,18 +118,19 @@ server <- function(input, output, session) {
 
       # The rate of interaction
       Tot <- Ri + Bi
-      voter_term <- gamma * (Ri * Bi) # Contact rate ind vd ind: gamma*k
+      voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
       voter_term[Tot < 2] <- 0
 
       # The rate of joining a group for someone not yet part of a group is c/m.
       # The rate of leaving a group is
-      join_term <- (c_param / m) * (n - Tot)
+      join_term <- (c_param / m) * (n - Tot)/n
 
       # The rate of leave a group is B+ or B- depending on the thershold
       frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
       frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
-      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+      
+      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * frac_red, beta_minus * frac_red)
+      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * frac_blue, beta_minus * frac_blue)
 
       # The rate at which the process leaves the state
       lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate
@@ -244,25 +247,26 @@ server <- function(input, output, session) {
     }
 
     # Final opinion history
-    #opinion_history <- cbind(opinion_history, opinions)
+    opinion_history <- cbind(opinion_history, opinions)
 
-    reconstruct_bipartite <- function(members, n, m) {
-      i <- integer(0); j <- integer(0)
-      for (g in seq_len(m)) {
-        ids <- members[[g]]
-        if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-      }
-      sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-    }
-
-    if (rig_dirty) {
-      bipartite <- reconstruct_bipartite(members, n, m)
-      RIG <- bipartite_to_rig(bipartite)
-    }
+    # reconstruct_bipartite <- function(members, n, m) {
+    #   i <- integer(0); j <- integer(0)
+    #   for (g in seq_len(m)) {
+    #     ids <- members[[g]]
+    #     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
+    #   }
+    #   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
+    # }
+    # 
+    # if (rig_dirty) {
+    #   bipartite <- reconstruct_bipartite(members, n, m)
+    #   RIG <- bipartite_to_rig(bipartite)
+    # }
 
     list(
-      B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
+      #B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
       #opinions=opinions, opinions0=opinions0,
+      members0=members0,
       opinion_history=opinion_history,
       num_opinions=num_opinions,members=members
     )
@@ -271,17 +275,20 @@ server <- function(input, output, session) {
   #==========================
   # --- Output ---
   #==========================
-  output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
-                                                                   simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
-  output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  #output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
+  #output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
+  #                                                                 simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  #output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
+  #output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$opinion_history, simData()$num_opinions) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
-  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
-  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$B) })
-
+  #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
+  #output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$B) })
+  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
+  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
+  
 }
 
 #==========================

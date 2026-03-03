@@ -60,8 +60,10 @@ Bi <- sapply(blue_members, length)
 rig_dirty <- FALSE
 
 
+#----- NEW
 event_counter <- 0
-record_every <- 100
+record_every <- n
+members0<-members
 
 #==========================
 # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -71,18 +73,19 @@ while (t < t_max) {
 
   # The rate of interaction
   Tot <- Ri + Bi
-  voter_term <- gamma * (Ri * Bi) # Contact rate ind vd ind: gamma*k
+  voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
   voter_term[Tot < 2] <- 0
-
+  
   # The rate of joining a group for someone not yet part of a group is c/m.
   # The rate of leaving a group is
-  join_term <- (c_param / m) * (n - Tot)
-
+  join_term <- (c_param / m) * (n - Tot)/n
+  
   # The rate of leave a group is B+ or B- depending on the thershold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
   frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
-  leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-  leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+  
+  leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * frac_red, beta_minus * frac_red)
+  leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * frac_blue, beta_minus * frac_blue)
 
   # -----------------------------
   # New: extremist recruitment rates
@@ -251,27 +254,30 @@ while (t < t_max) {
   }
   # ---- record step ----
   event_counter <- event_counter + 1
-
+  
   if (event_counter %% record_every == 0) {
     opinion_history <- cbind(opinion_history, opinions)
   }
+  
+  
 }
+
 # Final opinion history
-#opinion_history <- cbind(opinion_history, opinions)
+opinion_history <- cbind(opinion_history, opinions)
 
-reconstruct_bipartite <- function(members, n, m) {
-  i <- integer(0); j <- integer(0)
-  for (g in seq_len(m)) {
-    ids <- members[[g]]
-    if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-  }
-  sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-}
-
-if (rig_dirty) {
-  B <- reconstruct_bipartite(members, n, m)
-  RIG <- bipartite_to_rig(B)
-}
+# reconstruct_bipartite <- function(members, n, m) {
+#   i <- integer(0); j <- integer(0)
+#   for (g in seq_len(m)) {
+#     ids <- members[[g]]
+#     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
+#   }
+#   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
+# }
+# 
+# if (rig_dirty) {
+#   B <- reconstruct_bipartite(members, n, m)
+#   RIG <- bipartite_to_rig(B)
+# }
 
 # list(
 #   B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
@@ -284,13 +290,13 @@ if (rig_dirty) {
 #==========================
 # --- Output ---
 #==========================
-visual_step_multi(RIG0, opinion_history[,1], num_opinions)
-visual_step_multi(RIG, opinion_history[,ncol( opinion_history)], num_opinions)
-visual_bipartite(B0, opinion_history[,1], num_opinions)
-visual_bipartite(B, opinion_history[,ncol( opinion_history)], num_opinions)
+#visual_step_multi(RIG0, opinion_history[,1], num_opinions)
+#visual_step_multi(RIG, opinion_history[,ncol( opinion_history)], num_opinions)
+#visual_bipartite(B0, opinion_history[,1], num_opinions)
+#visual_bipartite(B, opinion_history[,ncol( opinion_history)], num_opinions)
 visual_step_time(opinion_history, num_opinions)
 visual_histo(opinion_history, num_opinions)
 par(mfrow =c(1,1))
 #heatmapPlot(opinion_history, num_opinions)
-visual_histo_pergroup(opinion_history[,1], num_opinions, B0)
-visual_histo_pergroup(opinion_history[,ncol( opinion_history)], num_opinions, B)
+visual_histo_pergroup(opinion_history[,1], num_opinions, members0)
+visual_histo_pergroup(opinion_history[,ncol( opinion_history)], num_opinions, members)
