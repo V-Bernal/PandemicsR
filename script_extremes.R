@@ -37,6 +37,11 @@ opinions <- initialize_opinions_multi(n, num_opinions)
 #opinions0 <- opinions
 opinion_history <- matrix(opinions, ncol = 1)
 
+levels <- sort(unique(as.vector(opinions)))
+frac_mat <- sapply(levels, function(op) {
+  sum(opinions == op)/n
+})
+
 # Group tracker
 members <- vector("list", m)
 red_members <- vector("list", m)
@@ -72,7 +77,7 @@ t <- 0
 while (t < t_max) {
 
   # The rate of interaction
-  # Tot <- Ri + Bi
+  Tot <- Ri + Bi
   # voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
   # voter_term[Tot < 2] <- 0
   
@@ -262,6 +267,13 @@ while (t < t_max) {
   
   if (event_counter %% record_every == 0) {
     opinion_history <- cbind(opinion_history, opinions)
+  }
+  
+  if (event_counter %% record_every == 0) {
+    frac_temp <- sapply(levels, function(op) {
+      sum(opinions == op)/n
+    })
+    frac_mat <- cbind(frac_mat, frac_temp)
   }
   
   
