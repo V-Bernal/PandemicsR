@@ -117,9 +117,14 @@ server <- function(input, output, session) {
     while (t < t_max) {
 
       # The rate of interaction
-      Tot <- Ri + Bi
-      voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
-      voter_term[Tot < 2] <- 0
+      #Tot <- Ri + Bi
+      #voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
+      #voter_term[Tot < 2] <- 0
+      
+      # new
+      voter_term <- numeric(m)
+      valid <- Tot >= 2
+      voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
 
       # The rate of joining a group for someone not yet part of a group is c/m.
       # The rate of leaving a group is
@@ -129,8 +134,8 @@ server <- function(input, output, session) {
       frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
       frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
       
-      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * frac_red, beta_minus * frac_red)
-      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * frac_blue, beta_minus * frac_blue)
+      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
 
       # The rate at which the process leaves the state
       lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate
