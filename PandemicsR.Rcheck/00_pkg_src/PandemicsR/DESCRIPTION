@@ -1,0 +1,17 @@
+Package: PandemicsR
+Date: 2025-10-12
+Title: Modeling Pandemics using Random Intersection Graphs
+Version: 0.1.0
+Author: Victor Bernal
+Maintainer: Victor Bernal <victor.arturo.bernal@gmail.com>
+Description: Modeling Pandemics using Random Intersection Graphs. Voter's model, Schelling's model.
+License: GPL (>= 3)
+Encoding: UTF-8
+Repository: CRAN
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: Matrix, igraph
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2026-03-08 08:42:55 UTC; WKS030768
