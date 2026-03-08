@@ -250,9 +250,9 @@ server <- function(input, output, session) {
       # ---- record step ----
       event_counter <- event_counter + 1
 
-      if (event_counter %% record_every == 0) {
-        opinion_history <- cbind(opinion_history, opinions)
-      }
+      #if (event_counter %% record_every == 0) {
+      #  opinion_history <- cbind(opinion_history, opinions)
+      #}
       
       if (event_counter %% record_every == 0) {
         frac_temp <- sapply(levels, function(op) {
@@ -265,7 +265,8 @@ server <- function(input, output, session) {
 
     # Final opinion history
     opinion_history <- cbind(opinion_history, opinions)
-
+    frac_mat <- t(frac_mat)
+    colnames(frac_mat) <- levels
     # reconstruct_bipartite <- function(members, n, m) {
     #   i <- integer(0); j <- integer(0)
     #   for (g in seq_len(m)) {
@@ -283,7 +284,7 @@ server <- function(input, output, session) {
     list(
       #B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
       #opinions=opinions, opinions0=opinions0,
-      members0=members0,
+      members0=members0,frac_mat=frac_mat,
       opinion_history=opinion_history,
       num_opinions=num_opinions,members=members
     )
@@ -298,7 +299,7 @@ server <- function(input, output, session) {
   #output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
   #output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
   
-  output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$opinion_history, simData()$num_opinions) })
+  output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
   #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })

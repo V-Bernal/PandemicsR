@@ -1,17 +1,11 @@
 #' Initialize voters' opinions multi
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name initialize_opinions_multi
 #'
 #' @import Matrix
 #' @import igraph
-#'
-#' @references \url{}
-#' @seealso \code{\link{brocolors}}
-#' @keywords hplot
 #'
 #' @param n number of individuals vertices
 #' @param num_opinions number of opinions

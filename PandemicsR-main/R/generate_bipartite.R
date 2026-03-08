@@ -1,22 +1,17 @@
 #' Generate bipartite matrix
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name generate_bipartite
 #'
 #' @import Matrix
 #' @import igraph
-#'
-#' @references \url{}
-#' @seealso \code{\link{brocolors}}
-#' @keywords hplot
+#' @importFrom stats rpois
 #'
 #' @param n number of individuals vertices
 #' @param m number of group vertices
 #' @param individual_weights ind vertex weight
-#' @param group_weights (see \code{\link[graphics]{par}})
+#' @param group_weights group_weights
 #'
 #' @return bipartite matrix \code{x}.
 #'
@@ -26,16 +21,6 @@
 #' # generate_bipartite(n = 20, m = 4, individual_weights, group_weights, lambda)
 #' #---------------------------------
 #' @export
-#'
-# generate_bipartite <- function(n, m, individual_weights, group_weights, lambda) {
-#   expected_edges <- outer(individual_weights, group_weights,
-#                           FUN = function(x, y) (x * y) / sum(group_weights))
-#   bipartite_matrix <- Matrix::Matrix(rpois(n * m, lambda = lambda * expected_edges) > 0,
-#                              nrow = n, ncol = m, sparse = TRUE)
-#   diag(bipartite_matrix) <- 0
-#   return(bipartite_matrix)
-# }
-
 generate_bipartite <- function(n, m, individual_weights, group_weights) {
   # Expected Poisson edges
   expected_edges <- outer(individual_weights, group_weights,

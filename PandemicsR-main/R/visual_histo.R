@@ -1,14 +1,14 @@
 #' visual_histo
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name visual_histo
 #'
+#' @import graphics
 #'
 #' @param opinion_history opinion_history
 #' @param num_opinions num_opinions
+#'
 #' @return NULL
 #'
 #' @examples

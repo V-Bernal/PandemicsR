@@ -1,17 +1,11 @@
 #' get_levels_vec
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name get_levels_vec
 #'
 #' @import Matrix
 #' @import igraph
-#'
-#' @references \url{}
-#' @seealso \code{\link{brocolors}}
-#' @keywords hplot
 #'
 #' @param num_opinions number of opinions
 #'

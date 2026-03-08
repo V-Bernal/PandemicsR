@@ -1,47 +1,35 @@
 #' visual_step_time
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name visual_step_time
 #'
-#' @param opinion_history opinion_history
-#' @param num_opinions num_opinions
+#' @import graphics
+#'
+#' @param frac_mat fraction of opinions
+#' @param num_opinions number of opinions
 #'
 #' @return NULL
 #'
 #' @examples
 #' #---------------------------------
 #' # visual_step_time
-#' # visual_step_time(opinion_history, num_opinions)
+#' # visual_step_time(frac_mat, num_opinions)
 #' #---------------------------------
 #' @export
-visual_step_time <- function(opinion_history, num_opinions){
+visual_step_time <- function(frac_mat, num_opinions){
 
   levels_vec <- get_levels_vec(num_opinions)
   my_palette <- get_palette(num_opinions)
 
   plot.new()
-  plot.window(xlim = c(1, ncol(opinion_history)), ylim = c(0, 1))
+  plot.window(xlim = c(1, nrow(frac_mat)), ylim = c(0, 1))
   axis(1)
   axis(2)
   box()
 
-  # frac <- apply(opinion_history, 2, function(x) prop.table(table(x)))
-  # frac_mat <- matrix(unlist(frac), num_opinions, ncol(opinion_history) )
-
-  levels <- sort(unique(as.vector(opinion_history)))
-  n_ind <- nrow(opinion_history)
-
-  frac_mat <- sapply(levels, function(op) {
-    colSums(opinion_history == op) / n_ind
-  })
-
-  frac_mat <- t(frac_mat)
-
   for (k in 1:num_opinions) {
-    lines(x = 1:ncol(opinion_history), y = frac_mat[k, ],
+    lines(x = 1:nrow(frac_mat), y = frac_mat[,k ],
           lwd = 2, col = my_palette[k])
   }
 

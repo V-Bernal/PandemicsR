@@ -1,7 +1,5 @@
 #' visual_bipartite
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name visual_bipartite
@@ -10,7 +8,7 @@
 #' @import igraph
 #'
 #' @param opinions number of group vertices
-#' @param bipartite biparitite
+#' @param bipartite bipartite
 #' @param num_opinions number opinions
 #'
 #' @return NULL

@@ -1,17 +1,12 @@
 #' get_palette
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name get_palette
 #'
 #' @import Matrix
 #' @import igraph
-#'
-#' @references \url{}
-#' @seealso \code{\link{brocolors}}
-#' @keywords hplot
+#' @import grDevices
 #'
 #' @param num_opinions number of opinions
 #'

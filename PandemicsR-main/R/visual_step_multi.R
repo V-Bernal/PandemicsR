@@ -1,7 +1,5 @@
 #' visual_step_multi
 #'
-#' @docType package
-#'
 #' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
 #'
 #' @name visual_step_multi
@@ -21,7 +19,6 @@
 #' # visual_step_multi(RIG, opinions, num_opinions)
 #' #---------------------------------
 #' @export
-
 visual_step_multi <- function(RIG, opinions, num_opinions){
 
   levels_vec <- get_levels_vec(num_opinions)

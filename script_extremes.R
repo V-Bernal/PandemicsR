@@ -265,9 +265,9 @@ while (t < t_max) {
   # ---- record step ----
   event_counter <- event_counter + 1
   
-  if (event_counter %% record_every == 0) {
-    opinion_history <- cbind(opinion_history, opinions)
-  }
+  #if (event_counter %% record_every == 0) {
+  #  opinion_history <- cbind(opinion_history, opinions)
+  #}
   
   if (event_counter %% record_every == 0) {
     frac_temp <- sapply(levels, function(op) {
@@ -281,7 +281,8 @@ while (t < t_max) {
 
 # Final opinion history
 opinion_history <- cbind(opinion_history, opinions)
-
+frac_mat <- t(frac_mat)
+colnames(frac_mat) <- levels
 # reconstruct_bipartite <- function(members, n, m) {
 #   i <- integer(0); j <- integer(0)
 #   for (g in seq_len(m)) {
@@ -311,7 +312,7 @@ opinion_history <- cbind(opinion_history, opinions)
 #visual_step_multi(RIG, opinion_history[,ncol( opinion_history)], num_opinions)
 #visual_bipartite(B0, opinion_history[,1], num_opinions)
 #visual_bipartite(B, opinion_history[,ncol( opinion_history)], num_opinions)
-visual_step_time(opinion_history, num_opinions)
+visual_step_time(frac_mat, num_opinions)
 visual_histo(opinion_history, num_opinions)
 par(mfrow =c(1,1))
 #heatmapPlot(opinion_history, num_opinions)
