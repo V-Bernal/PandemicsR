@@ -10,12 +10,12 @@ m <- 3 #
 num_opinions <- 4
 
 lambda <- 0.5 # "Init: Bipartite link density lambda"
-c_param <- 0.81 # rate of joining a group
+c_param <- 0.4 # rate of joining a group
 gamma <- 0.5 # Voter rate parameter
 
-beta_plus <- 0.7 # leave rate
-beta_minus <- 0.3 # leave rate
-T_threshold <- 0.5 # if fraction of less than T
+beta_plus <- 0.5 # leave rate
+beta_minus <- 0.2 # leave rate
+T_threshold <- 0.4 # if fraction of less than T
 
 t_max <- 1000 # Gillespie time
 alpha <- 0.1 # extreme conversion rate
@@ -147,6 +147,7 @@ while (t < t_max) {
   # Move step
   # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
   # 4: Remove internal Red 5: Remove internal Blue
+  # 6 and 7: extreme turns moderate of same color
   move <- sample(1:7L, 1L, prob = rates_vec / sum(rates_vec))
 
   if (move==1 && Ri_g>0) { # Red to Blue
@@ -228,7 +229,8 @@ while (t < t_max) {
                Ri[group_i] > 0) {
 
     moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
-    if (length(moderates) > 0) {
+    extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
+    if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
       chosen_moderate <- sample(moderates, 1)
       opinions[chosen_moderate] <- -2
 
@@ -247,7 +249,8 @@ while (t < t_max) {
               Bi[group_i] > 0) {
 
     moderates <- members[[group_i]][opinions[members[[group_i]]] == 1]
-    if (length(moderates) > 0) {
+    extremes <- members[[group_i]][opinions[members[[group_i]]] == 2]
+    if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
       chosen_moderate <- sample(moderates, 1)
       opinions[chosen_moderate] <- 2
 
