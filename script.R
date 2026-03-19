@@ -6,7 +6,7 @@ library(PandemicsR)
 #==========================
 
 n <- 15 # number of individuals
-m <- 6 #
+m <- 3 #
 num_opinions <- 2
 
 lambda <- 0.5 # "Init: Bipartite link density lambda"
@@ -252,7 +252,7 @@ colnames(frac_mat) <- levels
 #visual_step_multi(RIG, opinion_history[,ncol( opinion_history)], num_opinions)
 #visual_bipartite(B0, opinion_history[,1], num_opinions)
 #visual_bipartite(B, opinion_history[,ncol( opinion_history)], num_opinions)
-visual_step_time(frac_mat, num_opinions)
+visual_step_time(frac_mat, num_opinions, n)
 visual_histo(opinion_history, num_opinions)
 par(mfrow =c(1,1))
 #heatmapPlot(opinion_history, num_opinions)
