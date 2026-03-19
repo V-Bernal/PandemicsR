@@ -10,12 +10,12 @@ m <- 6 #
 num_opinions <- 2
 
 lambda <- 0.5 # "Init: Bipartite link density lambda"
-c_param <- 0.81 # rate of joining a group
+c_param <- 0.4 # rate of joining a group
 gamma <- 0.5 # Voter rate parameter
 
-beta_plus <- 0.7 # leave rate
-beta_minus <- 0.3 # leave rate
-T_threshold <- 0.5 # if fraction of less than T
+beta_plus <- 0.5 # leave rate
+beta_minus <- 0.2 # leave rate
+T_threshold <- 0.4 # if fraction of less than T
 
 t_max <- 1000 # Gillespie time
 

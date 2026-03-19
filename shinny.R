@@ -14,19 +14,19 @@ ui <- fluidPage(
       numericInput("m", "Number of groups", value = 3, min = 2),
       numericInput("timesteps", "Iterations", value = 1000),
 
-      sliderInput("lambda", "Init: Bipartite link density lambda", min = 0, step = 0.01, max = 1, value = 0.2),
+      sliderInput("lambda", "Init: Bipartite link density lambda", min = 0, step = 0.01, max = 100, value = 0.2),
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
 
       #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
-      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 1, value = 0.5),
-      sliderInput("beta_plus", "Voter: beta_plus", min = 0, step = 0.01, max = 1, value = 0.7),
+      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
+      sliderInput("beta_plus", "Voter: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
       sliderInput("beta_minus", "Voter: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
-      sliderInput("T_threshold", "Voter: T_threshold", min = 0, step = 0.01, max = 1, value = 0.5),
+      sliderInput("T_threshold", "Voter: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
 
-      checkboxInput("runVoter", "Voter model", value = TRUE),
+      #checkboxInput("runVoter", "Voter model", value = TRUE),
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
-
-      checkboxInput("runSchelling", "Schelling model", value = TRUE),
+      # 
+      #checkboxInput("runSchelling", "Schelling model", value = TRUE),
       actionButton("runSim", "Run Simulation")
     ),
 
@@ -282,8 +282,11 @@ server <- function(input, output, session) {
     # }
 
     list(
-      #B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
-      #opinions=opinions, opinions0=opinions0,
+      
+      # comment
+      B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
+      opinions=opinions, #opinions0=opinions0,
+      #
       members0=members0,frac_mat=frac_mat,
       opinion_history=opinion_history,
       num_opinions=num_opinions,members=members
@@ -293,12 +296,17 @@ server <- function(input, output, session) {
   #==========================
   # --- Output ---
   #==========================
-  #output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
-  #output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
-  #                                                                 simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
-  #output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
-  #output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
   
+  #---------------
+  # comment
+  output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
+  output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
+                                                                   simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
+  output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  }
+  
+  #---------------
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
