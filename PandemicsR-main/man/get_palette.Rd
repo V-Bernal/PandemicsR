@@ -22,5 +22,5 @@ get_palette
 #---------------------------------
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }

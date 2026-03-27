@@ -2,27 +2,35 @@
 % Please edit documentation in R/initialize_opinions_multi.R
 \name{initialize_opinions_multi}
 \alias{initialize_opinions_multi}
-\title{Initialize voters' opinions multi}
+\title{Initialize Voters' Opinions (Multiple States)}
 \usage{
 initialize_opinions_multi(n, num_opinions = NULL)
 }
 \arguments{
-\item{n}{number of individuals vertices}
+\item{n}{Integer. Number of individual vertices.}
 
-\item{num_opinions}{number of opinions}
+\item{num_opinions}{Integer. Number of distinct opinion states.}
 }
 \value{
-initialize_opinions \code{x}.
+An integer vector of length \code{n}, where each entry represents
+the opinion of an individual.
 }
 \description{
-Initialize voters' opinions multi
+Generates an initial configuration of opinions for a population of
+individuals, where each individual is assigned one of several possible
+discrete opinion states.
+}
+\details{
+Each individual is assigned an opinion by sampling independently from a
+discrete uniform distribution over \code{1:num_opinions}. This produces
+an unbiased initial distribution of opinions across the population.
 }
 \examples{
 #---------------------------------
 # Initialize opinions
-# initialize_opinions_multi(n = 20,num_Opinions =2)
+# initialize_opinions_multi(n = 15, num_Opinions = 2)
 #---------------------------------
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }

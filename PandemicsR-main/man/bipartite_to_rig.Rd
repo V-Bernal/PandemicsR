@@ -2,7 +2,7 @@
 % Please edit documentation in R/bipartite_to_rig.R
 \name{bipartite_to_rig}
 \alias{bipartite_to_rig}
-\title{Bipartite to RIG}
+\title{Convert a Bipartite Matrix to a Random Intersection Graph}
 \usage{
 bipartite_to_rig(bipartite_matrix)
 }
@@ -13,7 +13,15 @@ bipartite_to_rig(bipartite_matrix)
 Random Intersection Graph \code{rig}.
 }
 \description{
-Bipartite to RIG
+Computes the one-mode projection of a bipartite network onto the set of
+row nodes, producing a Random Intersection Graph (RIG). Two nodes are
+connected in the resulting graph if they share at least one common
+neighbor in the bipartite structure.
+}
+\details{
+The function performs a matrix multiplication of the bipartite matrix
+with its transpose and then binarizes the result. Diagonal elements are
+set to zero to avoid self-loops.
 }
 \examples{
 #---------------------------------
@@ -21,5 +29,5 @@ Bipartite to RIG
 #---------------------------------
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }

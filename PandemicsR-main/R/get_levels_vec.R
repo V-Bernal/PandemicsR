@@ -1,20 +1,27 @@
-#' get_levels_vec
+#' Generate Opinion Levels
 #'
-#' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
+#' Creates a vector of discrete opinion levels based on the specified number
+#' of opinions. The levels are evenly spaced around 0
+#'
+#' @author Victor Bernal
 #'
 #' @name get_levels_vec
+#'
+#' @param num_opinions Number of opinions
 #'
 #' @import Matrix
 #' @import igraph
 #'
-#' @param num_opinions number of opinions
+#' @return A numeric vector of length \code{num_opinions} around 0
 #'
-#' @return levels
+#' @details
+#' The levels are generated using an evenly spaced sequence
 #'
 #' @examples
-#' #---------------------------------
-#' # get_levels_vec (num_opinions)
-#' #---------------------------------
+#' # Generate 3 opinion levels
+#' get_levels_vec(3)
+#' # Returns: -2 -1  1  2
+#'
 #' @export
 get_levels_vec <- function(num_opinions){
 

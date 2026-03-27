@@ -1,6 +1,6 @@
 #' get_palette
 #'
-#' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
+#' @author Victor Bernal
 #'
 #' @name get_palette
 #'

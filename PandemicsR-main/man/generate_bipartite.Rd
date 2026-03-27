@@ -2,31 +2,61 @@
 % Please edit documentation in R/generate_bipartite.R
 \name{generate_bipartite}
 \alias{generate_bipartite}
-\title{Generate bipartite matrix}
+\title{Generate a Bipartite Matrix}
 \usage{
 generate_bipartite(n, m, individual_weights, group_weights)
 }
 \arguments{
-\item{n}{number of individuals vertices}
+\item{n}{Integer. Number of vertices in the first set (e.g., individuals).}
 
-\item{m}{number of group vertices}
+\item{m}{Integer. Number of vertices in the second set (e.g., groups).}
 
-\item{individual_weights}{ind vertex weight}
+\item{individual_weights}{Numeric vector of length \code{n}. Weights
+associated with individual vertices, controlling their expected degree.}
 
-\item{group_weights}{group_weights}
+\item{group_weights}{Numeric vector of length \code{m}. Weights associated
+with group vertices, controlling their attractiveness.}
 }
 \value{
-bipartite matrix \code{x}.
+A sparse matrix of class \code{dgCMatrix} with dimension
+\code{n x m}, representing the bipartite adjacency matrix. Entries are
+non-negative integers corresponding to the number of edges between nodes.
 }
 \description{
-Generate bipartite matrix
+Simulates a bipartite network between two sets of vertices (e.g.,
+individuals and groups) using a Poisson edge-generation mechanism.
+The expected number of edges between each pair of nodes is determined
+by their associated weights.
+}
+\details{
+Each entry in the resulting matrix represents the number of connections
+(multi-edges) between an individual and a group, drawn from a Poisson
+distribution. This allows for weighted or multi-edge bipartite graphs.
+
+The expected number of edges between individual \eqn{i} and group \eqn{j}
+is given by:
+\deqn{\lambda_{ij} = \frac{w_i \cdot g_j}{\sum_k g_k}}
+where \eqn{w_i} and \eqn{g_j} are the individual and group weights,
+respectively. Each entry is then sampled as:
+\deqn{B_{ij} \sim \mathrm{Poisson}(\lambda_{ij})}
+
+This formulation produces a random bipartite multigraph consistent with
+weighted random intersection models.
 }
 \examples{
 #---------------------------------
 # Generate a bipartite
-# generate_bipartite(n = 20, m = 4, individual_weights, group_weights, lambda)
+# Set parameters
+n <- 5
+m <- 3
+individual_weights <- runif(n, 0.5, 1.5)
+group_weights <- runif(m, 0.5, 1.5)
+
+# Generate bipartite matrix
+B <- generate_bipartite(n, m, individual_weights, group_weights)
+print(B)
 #---------------------------------
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }

@@ -1,6 +1,15 @@
-#' Bipartite to RIG
+#' Convert a Bipartite Matrix to a Random Intersection Graph
 #'
-#' @author Victor Bernal \email{victor.arturo.bernal@gmail.com}
+#' Computes the one-mode projection of a bipartite network onto the set of
+#' row nodes, producing a Random Intersection Graph (RIG). Two nodes are
+#' connected in the resulting graph if they share at least one common
+#' neighbor in the bipartite structure.
+#'
+#' The function performs a matrix multiplication of the bipartite matrix
+#' with its transpose and then binarizes the result. Diagonal elements are
+#' set to zero to avoid self-loops.
+#'
+#' @author Victor Bernal
 #'
 #' @name bipartite_to_rig
 #'

@@ -2,24 +2,29 @@
 % Please edit documentation in R/get_levels_vec.R
 \name{get_levels_vec}
 \alias{get_levels_vec}
-\title{get_levels_vec}
+\title{Generate Opinion Levels}
 \usage{
 get_levels_vec(num_opinions)
 }
 \arguments{
-\item{num_opinions}{number of opinions}
+\item{num_opinions}{Number of opinions}
 }
 \value{
-levels
+A numeric vector of length \code{num_opinions} around 0
 }
 \description{
-get_levels_vec
+Creates a vector of discrete opinion levels based on the specified number
+of opinions. The levels are evenly spaced around 0
+}
+\details{
+The levels are generated using an evenly spaced sequence
 }
 \examples{
-#---------------------------------
-# get_levels_vec (num_opinions)
-#---------------------------------
+# Generate 3 opinion levels
+get_levels_vec(3)
+# Returns: -2 -1  1  2
+
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }
