@@ -8,7 +8,9 @@ library(PandemicsR)
 #==========================
 ui <- fluidPage(
   titlePanel(h2("Voter - Schelling Multi-Membership Simulation")),
+  
   sidebarLayout(
+    
     sidebarPanel(
       numericInput("n", "Number of individuals", value = 15, min = 5),
       numericInput("m", "Number of groups", value = 3, min = 2),
@@ -27,8 +29,11 @@ ui <- fluidPage(
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
       # 
       #checkboxInput("runSchelling", "Schelling model", value = TRUE),
-      actionButton("runSim", "Run Simulation")
-    ),
+      actionButton("runSim", "Run Simulation"),
+      checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
+      checkboxInput("show_rig", "Show final Graph", value = FALSE)
+      
+          ),
 
     mainPanel(
       tabsetPanel(
@@ -307,11 +312,40 @@ server <- function(input, output, session) {
   
   #---------------
   # comment
-  output$rig0Plot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
-                                                                   simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
-  output$bipartite0Plot <- renderPlot({ req(simData()); visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
-  output$bipartitePlot <- renderPlot({ req(simData()); visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  #output$rig0Plot <- renderPlot({ req(simData()) ; visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
+  
+  output$rig0Plot <- renderPlot({
+    req(simData())           # simulation must exist
+    req(input$show_rig0)     # checkbox must be TRUE
+    
+    visual_step_multi(
+      simData()$RIG0,
+      simData()$opinion_history[,1],
+      simData()$num_opinions
+    )
+  })
+  
+  output$rigPlot <- renderPlot({
+    req(simData())           # simulation must exist
+    req(input$show_rig)     # checkbox must be TRUE
+    
+    visual_step_multi(
+      simData()$RIG,
+      simData()$opinion_history[, ncol( simData()$opinion_history)],
+      simData()$num_opinions
+    )
+  })
+  
+  # output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
+  #                                                                  simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+  output$bipartite0Plot <- renderPlot({     req(simData())           # simulation must exist
+    req(input$show_rig0)     # checkbox must be TRUE; 
+    visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
+  
+  output$bipartitePlot <- renderPlot({     
+    req(simData())           # simulation must exist
+    req(input$show_rig)     # checkbox must be TRUE; 
+    visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
   
   #---------------
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
