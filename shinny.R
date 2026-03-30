@@ -40,6 +40,17 @@ sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries
   sample(available, 1L)
 }
 
+remove_value_fast <- function(vec, value) {
+  idx <- match(value, vec, nomatch = 0L)
+  if (idx == 0L) {
+    return(vec)
+  }
+
+  last_idx <- length(vec)
+  vec[idx] <- vec[last_idx]
+  vec[-last_idx]
+}
+
 resolve_app_password <- function() {
   password <- Sys.getenv("APP_PASSWORD", unset = "")
   if (nzchar(password)) {
@@ -107,7 +118,7 @@ dashboard_ui <- tagList(
       checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
       param_help("Turns group joining and leaving dynamics on or off."),
       actionButton("runSim", "Run Simulation"),
-      param_help("After changing parameters, press Run Simulation to refresh all plots."),
+      uiOutput("runStatus"),
       checkboxInput("show_rig0", "Show initial Graph", value = TRUE),
       param_help("Displays the initial RIG and bipartite graph."),
       checkboxInput("show_rig", "Show final Graph", value = TRUE),
@@ -174,6 +185,21 @@ ui <- fluidPage(
         font-size: 12px;
         line-height: 1.35;
       }
+      .run-status {
+        margin-top: 8px;
+        margin-bottom: 12px;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .run-status-pending {
+        color: #9b1c1c;
+      }
+      .run-status-ok {
+        color: #1d6f42;
+      }
+      .run-status-info {
+        color: #5b6879;
+      }
     "))
   ),
   uiOutput("appShell")
@@ -188,6 +214,7 @@ server <- function(input, output, session) {
   sim_result <- reactiveVal(NULL)
   sim_error <- reactiveVal(NULL)
   initial_sim_done <- reactiveVal(FALSE)
+  last_run_signature <- reactiveVal(NULL)
   expected_password <- resolve_app_password()
   required_input_ids <- c(
     "n", "m", "timesteps", "lambda", "c_param", "gamma",
@@ -199,12 +226,35 @@ server <- function(input, output, session) {
     all(vapply(required_input_ids, function(id) !is.null(input[[id]]), logical(1)))
   }
 
+  current_signature <- reactive({
+    req(inputs_ready())
+    vapply(required_input_ids, function(id) paste(input[[id]], collapse = ","), character(1))
+  })
+
   output$appShell <- renderUI({
     if (isTRUE(is_authenticated())) {
       dashboard_ui
     } else {
       password_gate_card(auth_error())
     }
+  })
+
+  output$runStatus <- renderUI({
+    req(isTRUE(is_authenticated()))
+    if (!inputs_ready()) {
+      return(NULL)
+    }
+
+    last_signature <- last_run_signature()
+    if (is.null(last_signature)) {
+      return(tags$p(class = "run-status run-status-info", "The dashboard runs once when it opens. Use Run Simulation after changing parameters."))
+    }
+
+    if (!identical(last_signature, current_signature())) {
+      return(tags$p(class = "run-status run-status-pending", "Parameters changed. Press Run Simulation to refresh all plots."))
+    }
+
+    tags$p(class = "run-status run-status-ok", "Plots match the current settings.")
   })
 
   observeEvent(input$unlockApp, {
@@ -217,6 +267,7 @@ server <- function(input, output, session) {
       sim_error(NULL)
       sim_result(NULL)
       initial_sim_done(FALSE)
+      last_run_signature(NULL)
       is_authenticated(TRUE)
     } else {
       auth_error("Incorrect password.")
@@ -259,8 +310,8 @@ server <- function(input, output, session) {
     opinion_history <- matrix(opinions, ncol = 1)
 
     levels <- sort(unique(as.vector(opinions)))
-    frac_mat <- matrix(vapply(levels, function(op) sum(opinions == op) / n, numeric(1)), nrow = 1)
-    time_history <- 0
+    frac_history <- list(vapply(levels, function(op) sum(opinions == op) / n, numeric(1)))
+    time_history <- list(0)
 
     # Group tracker
     members <- vector("list", m)
@@ -281,9 +332,9 @@ server <- function(input, output, session) {
     rig_dirty <- FALSE
 
     #----- NEW
-    event_counter <- 0
+    event_counter <- 0L
     record_every <- max(1L, as.integer(n))
-    members0 <- members
+    members0 <- lapply(members, identity)
     
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -351,31 +402,41 @@ server <- function(input, output, session) {
       if (move==1 && Ri_g>0) { # Red to Blue
         chosen <- sample(red_members[[group_i]],1)
         opinions[chosen] <- +1
-        # update every group where individual belongs
-        for (g in groups_of_individual[[chosen]]) {
-          idx <- which(red_members[[g]]==chosen)
-          if (length(idx)>0) {
-            red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])] # Replaces the chosen individual with the last element
-            red_members[[g]] <- red_members[[g]][-length(red_members[[g]])] # delete last
+        member_groups <- groups_of_individual[[chosen]]
+        updated_groups <- integer(0)
+        for (g in member_groups) {
+          idx <- match(chosen, red_members[[g]], nomatch = 0L)
+          if (idx > 0L) {
+            last_idx <- length(red_members[[g]])
+            red_members[[g]][idx] <- red_members[[g]][last_idx]
+            red_members[[g]] <- red_members[[g]][-last_idx]
             blue_members[[g]] <- c(blue_members[[g]], chosen)
-            Ri[g] <- Ri[g]-1
-            Bi[g] <- Bi[g]+1
+            updated_groups <- c(updated_groups, g)
           }
+        }
+        if (length(updated_groups) > 0L) {
+          Ri[updated_groups] <- Ri[updated_groups] - 1L
+          Bi[updated_groups] <- Bi[updated_groups] + 1L
         }
 
       } else if (move==2 && Bi_g>0) { # Blue to Red
         chosen <- sample(blue_members[[group_i]],1)
         opinions[chosen] <- -1
-        # update every group where individual belongs
-        for (g in groups_of_individual[[chosen]]) {
-          idx <- which(blue_members[[g]]==chosen)
-          if (length(idx)>0) {
-            blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
-            blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
+        member_groups <- groups_of_individual[[chosen]]
+        updated_groups <- integer(0)
+        for (g in member_groups) {
+          idx <- match(chosen, blue_members[[g]], nomatch = 0L)
+          if (idx > 0L) {
+            last_idx <- length(blue_members[[g]])
+            blue_members[[g]][idx] <- blue_members[[g]][last_idx]
+            blue_members[[g]] <- blue_members[[g]][-last_idx]
             red_members[[g]] <- c(red_members[[g]], chosen)
-            Bi[g] <- Bi[g]-1
-            Ri[g] <- Ri[g]+1
+            updated_groups <- c(updated_groups, g)
           }
+        }
+        if (length(updated_groups) > 0L) {
+          Bi[updated_groups] <- Bi[updated_groups] - 1L
+          Ri[updated_groups] <- Ri[updated_groups] + 1L
         }
 
       } else if (move==3 && Tot[group_i] < n) { # Join
@@ -401,10 +462,8 @@ server <- function(input, output, session) {
         red_members[[group_i]][chosen_idx] <- red_members[[group_i]][length(red_members[[group_i]])]
         red_members[[group_i]] <- red_members[[group_i]][-length(red_members[[group_i]])]
 
-        idx_m <- which(members[[group_i]]==chosen)
-        members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
-        members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
-        groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
+        members[[group_i]] <- remove_value_fast(members[[group_i]], chosen)
+        groups_of_individual[[chosen]] <- remove_value_fast(groups_of_individual[[chosen]], group_i)
         Ri[group_i] <- Ri[group_i]-1
         rig_dirty <- TRUE
 
@@ -414,10 +473,8 @@ server <- function(input, output, session) {
         blue_members[[group_i]][chosen_idx] <- blue_members[[group_i]][length(blue_members[[group_i]])]
         blue_members[[group_i]] <- blue_members[[group_i]][-length(blue_members[[group_i]])]
 
-        idx_m <- which(members[[group_i]]==chosen)
-        members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
-        members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
-        groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
+        members[[group_i]] <- remove_value_fast(members[[group_i]], chosen)
+        groups_of_individual[[chosen]] <- remove_value_fast(groups_of_individual[[chosen]], group_i)
         Bi[group_i] <- Bi[group_i]-1
         rig_dirty <- TRUE
       }
@@ -431,8 +488,8 @@ server <- function(input, output, session) {
       
       if (event_counter %% record_every == 0) {
         frac_temp <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
-        frac_mat <- rbind(frac_mat, frac_temp)
-        time_history <- c(time_history, t)
+        frac_history[[length(frac_history) + 1L]] <- frac_temp
+        time_history[[length(time_history) + 1L]] <- t
       }
       
     }
@@ -440,10 +497,13 @@ server <- function(input, output, session) {
     # Final opinion history
     opinion_history <- cbind(opinion_history, opinions)
     final_frac <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
-    if (tail(time_history, 1) < t || any(tail(frac_mat, 1) != final_frac)) {
-      frac_mat <- rbind(frac_mat, final_frac)
-      time_history <- c(time_history, t)
+    if (tail(unlist(time_history, use.names = FALSE), 1) < t ||
+        any(frac_history[[length(frac_history)]] != final_frac)) {
+      frac_history[[length(frac_history) + 1L]] <- final_frac
+      time_history[[length(time_history) + 1L]] <- t
     }
+    frac_mat <- do.call(rbind, frac_history)
+    time_history <- unlist(time_history, use.names = FALSE)
     colnames(frac_mat) <- levels
     if (rig_dirty) {
       bipartite <- reconstruct_bipartite(members, n, m)
@@ -469,6 +529,7 @@ server <- function(input, output, session) {
 
     sim_error(NULL)
     sim_result(result)
+    last_run_signature(isolate(current_signature()))
     invisible(TRUE)
   }
 
