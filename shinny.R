@@ -167,9 +167,7 @@ server <- function(input, output, session) {
       voter_g <- voter_term[group_i]; join_g <- join_term[group_i]
       leaveR_g <- leaveR_rate[group_i]; leaveB_g <- leaveB_rate[group_i]
 
-      rates_vec <- c(ifelse(voter_g>0, voter_g/2, 0),
-                     ifelse(voter_g>0, voter_g/2, 0),
-                     join_g, leaveR_g, leaveB_g)
+      rates_vec <- c(ifelse(voter_g>0, voter_g/2, 0), ifelse(voter_g>0, voter_g/2, 0), join_g, leaveR_g, leaveB_g)
       if (sum(rates_vec)<=0) next
 
       # Apply a random move in Gillespie time
@@ -182,7 +180,7 @@ server <- function(input, output, session) {
       # Move step
       # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
       # 4: Remove internal Red 5: Remove internal Blue
-      move <- sample(1:5L, 1L, prob = rates_vec / sum(rates_vec))
+      move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
       if (move==1 && Ri_g>0) { # Red to Blue
         chosen <- sample(red_members[[group_i]],1)

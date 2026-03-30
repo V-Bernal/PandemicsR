@@ -148,7 +148,7 @@ while (t < t_max) {
   # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
   # 4: Remove internal Red 5: Remove internal Blue
   # 6 and 7: extreme turns moderate of same color
-  move <- sample(1:7L, 1L, prob = rates_vec / sum(rates_vec))
+  move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
   if (move==1 && Ri_g>0) { # Red to Blue
     chosen <- sample(red_members[[group_i]],1)
