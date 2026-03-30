@@ -1,0 +1,19 @@
+.git
+.Rhistory
+.Rproj.user
+.r-lib
+.renv-cache
+PandemicsR.Rcheck
+PandemicsR-main.Rcheck
+PandemicsR_0.1.0.tar.gz
+PandemicsR.Rproj
+old functions
+deploy_shinyapps.R
+script.R
+script_extremes.R
+tmp
+PandemicsR-main/.Rbuildignore
+PandemicsR-main/DESCRIPTION
+PandemicsR-main/NAMESPACE
+PandemicsR-main/README.md
+PandemicsR-main/man

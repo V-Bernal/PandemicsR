@@ -1,7 +1,10 @@
 library(shiny)
 library(igraph)
 library(Matrix)
-library(PandemicsR)
+
+for (r_file in sort(list.files("PandemicsR-main/R", pattern = "\\.R$", full.names = TRUE))) {
+  sys.source(r_file, envir = environment())
+}
 
 reconstruct_bipartite <- function(members, n, m) {
   i <- integer(0)
@@ -18,10 +21,35 @@ reconstruct_bipartite <- function(members, n, m) {
   sparseMatrix(i = i, j = j, x = 1L, dims = c(n, m))
 }
 
+resolve_app_password <- function() {
+  password <- Sys.getenv("APP_PASSWORD", unset = "")
+  if (nzchar(password)) {
+    return(password)
+  }
+
+  "voter"
+}
+
+password_gate_card <- function(error_message = NULL) {
+  div(
+    class = "password-gate-wrap",
+    div(
+      class = "password-gate-card",
+      tags$h3("Protected Demo"),
+      tags$p("Enter the shared password to open the dashboard."),
+      passwordInput("accessPassword", "Password"),
+      actionButton("unlockApp", "Open Dashboard"),
+      if (!is.null(error_message) && nzchar(error_message)) {
+        tags$p(class = "password-gate-error", error_message)
+      }
+    )
+  )
+}
+
 #==========================
 # --- UI ---
 #==========================
-ui <- fluidPage(
+dashboard_ui <- tagList(
   titlePanel(h2("Voter - Schelling Multi-Membership Simulation")),
   
   sidebarLayout(
@@ -79,12 +107,64 @@ ui <- fluidPage(
   )
 )
 
+ui <- fluidPage(
+  tags$head(
+    tags$style(HTML("
+      .password-gate-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 32px;
+      }
+      .password-gate-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 24px;
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 16px;
+        box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+      }
+      .password-gate-error {
+        margin-top: 12px;
+        color: #b42318;
+        font-weight: 600;
+      }
+    "))
+  ),
+  uiOutput("appShell")
+)
+
 #==========================
 # --- Server ---
 #==========================
 server <- function(input, output, session) {
+  is_authenticated <- reactiveVal(FALSE)
+  auth_error <- reactiveVal(NULL)
+  expected_password <- resolve_app_password()
+
+  output$appShell <- renderUI({
+    if (isTRUE(is_authenticated())) {
+      dashboard_ui
+    } else {
+      password_gate_card(auth_error())
+    }
+  })
+
+  observeEvent(input$unlockApp, {
+    entered_password <- input$accessPassword
+    if (is.null(entered_password)) {
+      entered_password <- ""
+    }
+    if (identical(entered_password, expected_password)) {
+      auth_error(NULL)
+      is_authenticated(TRUE)
+    } else {
+      auth_error("Incorrect password.")
+    }
+  }, ignoreInit = TRUE)
 
   simData <- eventReactive(input$runSim, {
+    req(isTRUE(is_authenticated()))
 
     #==========================
     # 1. User parameters
@@ -322,6 +402,7 @@ server <- function(input, output, session) {
   #==========================
   
   output$rig0Plot <- renderPlot({
+    req(isTRUE(is_authenticated()))
     req(simData())
     req(input$show_rig0)
     
@@ -333,6 +414,7 @@ server <- function(input, output, session) {
   })
   
   output$rigPlot <- renderPlot({
+    req(isTRUE(is_authenticated()))
     req(simData())
     req(input$show_rig)
     
@@ -344,6 +426,7 @@ server <- function(input, output, session) {
   })
   
   output$bipartite0Plot <- renderPlot({
+    req(isTRUE(is_authenticated()))
     req(simData())
     req(input$show_rig0)
 
@@ -351,23 +434,25 @@ server <- function(input, output, session) {
   })
   
   output$bipartitePlot <- renderPlot({
+    req(isTRUE(is_authenticated()))
     req(simData())
     req(input$show_rig)
 
     visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions)
   })
 
-  output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
-  output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
+  output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
+  output$histo <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
   #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
   #output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$B) })
-  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
-  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
+  output$histogramGroup0 <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
+  output$histogramGroup <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
   
 }
 
 #==========================
 # --- Run App ---
 #==========================
-shinyApp(ui, server)
+app <- shinyApp(ui, server)
+app
