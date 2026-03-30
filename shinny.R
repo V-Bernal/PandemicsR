@@ -85,7 +85,7 @@ dashboard_ui <- tagList(
       numericInput("timesteps", "Iterations", value = 1000),
       param_help("Maximum Gillespie time horizon for one simulation run."),
 
-      sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 10),
+      sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 0.5),
       param_help("Higher values create a denser initial individual-group membership structure."),
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
       param_help("Controls how quickly outsiders join groups."),
@@ -107,6 +107,7 @@ dashboard_ui <- tagList(
       checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
       param_help("Turns group joining and leaving dynamics on or off."),
       actionButton("runSim", "Run Simulation"),
+      param_help("After changing parameters, press Run Simulation to refresh all plots."),
       checkboxInput("show_rig0", "Show initial Graph", value = TRUE),
       param_help("Displays the initial RIG and bipartite graph."),
       checkboxInput("show_rig", "Show final Graph", value = TRUE),
