@@ -30,8 +30,8 @@ visual_bipartite <- function(bipartite, opinions, num_opinions){
     stop("Unknown opinion detected: ", paste(unique(opinions), collapse=", "))
   }
 
-  g <- graph_from_incidence_matrix(as.matrix(bipartite))
-  V(g)$type <- bipartite_mapping(g)$type
+  bipartite_graph <- Matrix::Matrix(bipartite != 0, sparse = TRUE)
+  g <- graph_from_biadjacency_matrix(bipartite_graph)
 
   # Scale vertex size down for large networks
   n_nodes <- vcount(g)

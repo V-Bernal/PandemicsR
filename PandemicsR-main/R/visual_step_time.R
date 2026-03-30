@@ -8,7 +8,7 @@
 #'
 #' @param frac_mat fraction of opinions
 #' @param num_opinions number of opinions
-#' @param n number of individuals
+#' @param time_points optional vector of recorded simulation times
 #'
 #' @return NULL
 #'
@@ -18,23 +18,33 @@
 #' # visual_step_time(frac_mat, num_opinions)
 #' #---------------------------------
 #' @export
-visual_step_time <- function(frac_mat, num_opinions, n){
+visual_step_time <- function(frac_mat, num_opinions, time_points = NULL){
 
   levels_vec <- get_levels_vec(num_opinions)
   my_palette <- get_palette(num_opinions)
 
-  # Note: frac was recorded every n events. ticks are rescaled by mult by n
+  if (is.null(time_points) || length(time_points) != nrow(frac_mat)) {
+    time_points <- seq_len(nrow(frac_mat)) - 1
+    xlab <- "Recorded step"
+  } else {
+    time_points <- as.numeric(time_points)
+    xlab <- "Simulation time"
+  }
+
+  xlim <- range(time_points)
+  if (xlim[1] == xlim[2]) {
+    xlim <- xlim + c(-0.5, 0.5)
+  }
+
   plot.new()
-  plot.window(xlim = c(1, nrow(frac_mat)), ylim = c(0, 1), xaxt = "n")  # suppress x-axis)
-  axis(1, at = c(1: nrow(frac_mat)), labels = n*(1:nrow(frac_mat)))
-  #plot.window(xlim = c(1, nrow(frac_mat)), ylim = c(0, 1))
-  #axis(1)
+  plot.window(xlim = xlim, ylim = c(0, 1))
+  axis(1)
   axis(2)
   box()
-  title(xlab = "Time", ylab = "Voter Fraction")
+  title(xlab = xlab, ylab = "Opinion fraction")
 
   for (k in 1:num_opinions) {
-    lines(x = 1:nrow(frac_mat), y = frac_mat[,k ],
+    lines(x = time_points, y = frac_mat[,k ],
           lwd = 2, col = my_palette[k])
   }
 

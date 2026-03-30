@@ -29,7 +29,7 @@ visual_step_multi <- function(RIG, opinions, num_opinions){
     stop("Unknown opinion detected: ", paste(unique(opinions), collapse=", "))
   }
 
-  rig_graph <- graph_from_adjacency_matrix(as.matrix(RIG), mode = "undirected", diag = FALSE)
+  rig_graph <- graph_from_adjacency_matrix(RIG, mode = "undirected", diag = FALSE)
 
   # Map opinions to colors
   V(rig_graph)$color <- my_palette[match(opinions, levels_vec)]

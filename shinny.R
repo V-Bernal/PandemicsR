@@ -7,18 +7,37 @@ for (r_file in sort(list.files("PandemicsR-main/R", pattern = "\\.R$", full.name
 }
 
 reconstruct_bipartite <- function(members, n, m) {
-  i <- integer(0)
-  j <- integer(0)
+  group_sizes <- lengths(members)
+  if (!any(group_sizes)) {
+    return(sparseMatrix(i = integer(0), j = integer(0), x = integer(0), dims = c(n, m)))
+  }
 
-  for (g in seq_len(m)) {
-    ids <- members[[g]]
-    if (length(ids) > 0) {
-      i <- c(i, ids)
-      j <- c(j, rep.int(g, length(ids)))
+  sparseMatrix(
+    i = unlist(members, use.names = FALSE),
+    j = rep.int(seq_len(m), group_sizes),
+    x = 1L,
+    dims = c(n, m)
+  )
+}
+
+sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries = 25L) {
+  for (attempt in seq_len(max_tries)) {
+    candidate <- sample.int(n, 1L)
+    if (!(group_i %in% groups_of_individual[[candidate]])) {
+      return(candidate)
     }
   }
 
-  sparseMatrix(i = i, j = j, x = 1L, dims = c(n, m))
+  available <- setdiff(seq_len(n), members[[group_i]])
+  if (!length(available)) {
+    return(NA_integer_)
+  }
+
+  if (length(available) == 1L) {
+    return(available)
+  }
+
+  sample(available, 1L)
 }
 
 resolve_app_password <- function() {
@@ -165,7 +184,19 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   is_authenticated <- reactiveVal(FALSE)
   auth_error <- reactiveVal(NULL)
+  sim_result <- reactiveVal(NULL)
+  sim_error <- reactiveVal(NULL)
+  initial_sim_done <- reactiveVal(FALSE)
   expected_password <- resolve_app_password()
+  required_input_ids <- c(
+    "n", "m", "timesteps", "lambda", "c_param", "gamma",
+    "beta_plus", "beta_minus", "T_threshold", "Numopinions",
+    "runVoter", "runSchelling"
+  )
+
+  inputs_ready <- function() {
+    all(vapply(required_input_ids, function(id) !is.null(input[[id]]), logical(1)))
+  }
 
   output$appShell <- renderUI({
     if (isTRUE(is_authenticated())) {
@@ -182,15 +213,22 @@ server <- function(input, output, session) {
     }
     if (identical(entered_password, expected_password)) {
       auth_error(NULL)
+      sim_error(NULL)
+      sim_result(NULL)
+      initial_sim_done(FALSE)
       is_authenticated(TRUE)
     } else {
       auth_error("Incorrect password.")
     }
   }, ignoreInit = TRUE)
 
-  simData <- eventReactive(input$runSim, {
-    req(isTRUE(is_authenticated()))
+  run_current_simulation <- function() {
+    if (!inputs_ready()) {
+      return(invisible(FALSE))
+    }
 
+    result <- tryCatch(
+      withProgress(message = "Running simulation", value = 0.15, {
     #==========================
     # 1. User parameters
     #==========================
@@ -220,15 +258,13 @@ server <- function(input, output, session) {
     opinion_history <- matrix(opinions, ncol = 1)
 
     levels <- sort(unique(as.vector(opinions)))
-    frac_mat <- sapply(levels, function(op) {
-      sum(opinions == op)/n
-    })
-    
+    frac_mat <- matrix(vapply(levels, function(op) sum(opinions == op) / n, numeric(1)), nrow = 1)
+    time_history <- 0
+
     # Group tracker
     members <- vector("list", m)
     red_members <- vector("list", m)
     blue_members <- vector("list", m)
-    outsiders <- vector("list", m)
     groups_of_individual <- vector("list", n) # IDs of all groups that individual i belongs to
 
     for (g in seq_len(m)) {
@@ -236,7 +272,6 @@ server <- function(input, output, session) {
       members[[g]] <- ids
       red_members[[g]] <- ids[opinions[ids] == -1]
       blue_members[[g]] <- ids[opinions[ids] == +1]
-      outsiders[[g]] <- setdiff(seq_len(n), ids)
       for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
     }
 
@@ -246,8 +281,8 @@ server <- function(input, output, session) {
 
     #----- NEW
     event_counter <- 0
-    record_every <- n
-    members0<-members
+    record_every <- max(1L, as.integer(n))
+    members0 <- members
     
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -342,11 +377,11 @@ server <- function(input, output, session) {
           }
         }
 
-      } else if (move==3 && length(outsiders[[group_i]])>0) { # Join
-        chosen_idx <- sample.int(length(outsiders[[group_i]]),1)
-        chosen <- outsiders[[group_i]][chosen_idx]
-        outsiders[[group_i]][chosen_idx] <- outsiders[[group_i]][length(outsiders[[group_i]])]
-        outsiders[[group_i]] <- outsiders[[group_i]][-length(outsiders[[group_i]])]
+      } else if (move==3 && Tot[group_i] < n) { # Join
+        chosen <- sample_outsider(group_i, members, groups_of_individual, n)
+        if (is.na(chosen)) {
+          next
+        }
 
         members[[group_i]] <- c(members[[group_i]], chosen)
         groups_of_individual[[chosen]] <- c(groups_of_individual[[chosen]], group_i)
@@ -369,7 +404,6 @@ server <- function(input, output, session) {
         members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
         members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
         groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
-        outsiders[[group_i]] <- c(outsiders[[group_i]], chosen)
         Ri[group_i] <- Ri[group_i]-1
         rig_dirty <- TRUE
 
@@ -383,7 +417,6 @@ server <- function(input, output, session) {
         members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
         members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
         groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
-        outsiders[[group_i]] <- c(outsiders[[group_i]], chosen)
         Bi[group_i] <- Bi[group_i]-1
         rig_dirty <- TRUE
       }
@@ -396,17 +429,20 @@ server <- function(input, output, session) {
       #}
       
       if (event_counter %% record_every == 0) {
-        frac_temp <- sapply(levels, function(op) {
-          sum(opinions == op)/n
-        })
-        frac_mat <- cbind(frac_mat, frac_temp)
+        frac_temp <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
+        frac_mat <- rbind(frac_mat, frac_temp)
+        time_history <- c(time_history, t)
       }
       
     }
 
     # Final opinion history
     opinion_history <- cbind(opinion_history, opinions)
-    frac_mat <- t(frac_mat)
+    final_frac <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
+    if (tail(time_history, 1) < t || any(tail(frac_mat, 1) != final_frac)) {
+      frac_mat <- rbind(frac_mat, final_frac)
+      time_history <- c(time_history, t)
+    }
     colnames(frac_mat) <- levels
     if (rig_dirty) {
       bipartite <- reconstruct_bipartite(members, n, m)
@@ -416,10 +452,48 @@ server <- function(input, output, session) {
     list(
       B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
       opinions=opinions,
-      members0=members0,frac_mat=frac_mat,
+      members0=members0,frac_mat=frac_mat,time_history=time_history,
       opinion_history=opinion_history,
-      num_opinions=num_opinions,members=members
+      num_opinions=num_opinions,members=members,final_time=t
     )
+      }),
+      error = function(err) err
+    )
+
+    if (inherits(result, "error")) {
+      sim_error(conditionMessage(result))
+      sim_result(NULL)
+      return(invisible(FALSE))
+    }
+
+    sim_error(NULL)
+    sim_result(result)
+    invisible(TRUE)
+  }
+
+  observe({
+    req(isTRUE(is_authenticated()))
+    req(!isTRUE(initial_sim_done()))
+    req(inputs_ready())
+    if (isTRUE(run_current_simulation())) {
+      initial_sim_done(TRUE)
+    }
+  })
+
+  observeEvent(input$runSim, {
+    req(isTRUE(is_authenticated()))
+    if (isTRUE(run_current_simulation())) {
+      initial_sim_done(TRUE)
+    }
+  }, ignoreInit = TRUE)
+
+  simData <- reactive({
+    req(isTRUE(is_authenticated()))
+    if (!is.null(sim_error())) {
+      validate(need(FALSE, sim_error()))
+    }
+    req(sim_result())
+    sim_result()
   })
 
   #==========================
@@ -466,7 +540,7 @@ server <- function(input, output, session) {
     visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions)
   })
 
-  output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
+  output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, simData()$time_history) })
   output$histo <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
   #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
