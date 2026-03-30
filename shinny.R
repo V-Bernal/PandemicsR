@@ -3,6 +3,21 @@ library(igraph)
 library(Matrix)
 library(PandemicsR)
 
+reconstruct_bipartite <- function(members, n, m) {
+  i <- integer(0)
+  j <- integer(0)
+
+  for (g in seq_len(m)) {
+    ids <- members[[g]]
+    if (length(ids) > 0) {
+      i <- c(i, ids)
+      j <- c(j, rep.int(g, length(ids)))
+    }
+  }
+
+  sparseMatrix(i = i, j = j, x = 1L, dims = c(n, m))
+}
+
 #==========================
 # --- UI ---
 #==========================
@@ -25,10 +40,9 @@ ui <- fluidPage(
       sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
       sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
 
-      #checkboxInput("runVoter", "Voter model", value = TRUE),
+      checkboxInput("runVoter", "Enable voter dynamics", value = TRUE),
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
-      # 
-      #checkboxInput("runSchelling", "Schelling model", value = TRUE),
+      checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
       actionButton("runSim", "Run Simulation"),
       checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
       checkboxInput("show_rig", "Show final Graph", value = FALSE)
@@ -76,10 +90,12 @@ server <- function(input, output, session) {
     # 1. User parameters
     #==========================
     n <- input$n; m <- input$m; t_max <- input$timesteps
-    lambda <- input$lambda; kappa <- input$kappa; c_param <- input$c_param
+    lambda <- input$lambda; c_param <- input$c_param
     gamma <- input$gamma; beta_plus <- input$beta_plus; beta_minus <- input$beta_minus
     T_threshold <- input$T_threshold
     num_opinions <- input$Numopinions
+    run_voter <- isTRUE(input$runVoter)
+    run_schelling <- isTRUE(input$runSchelling)
 
     #==========================
     # 2. Model parameters
@@ -142,18 +158,27 @@ server <- function(input, output, session) {
       # new
       voter_term <- numeric(m)
       valid <- Tot >= 2
-      voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+      if (run_voter) {
+        voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+      }
 
-      # The rate of joining a group for someone not yet part of a group is c/m.
-      # The rate of leaving a group is
-      join_term <- (c_param / m) * (n - Tot)/n
+      # Each missing individual-group edge joins at rate c/m, so the total
+      # group join rate scales with the number of outsiders.
+      join_term <- numeric(m)
+      if (run_schelling) {
+        join_term <- (c_param / m) * (n - Tot)
+      }
 
       # The rate of leave a group is B+ or B- depending on the thershold
       frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
       frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
       
-      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+      leaveR_rate <- numeric(m)
+      leaveB_rate <- numeric(m)
+      if (run_schelling) {
+        leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+        leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+      }
 
       # The rate at which the process leaves the state
       lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate
@@ -278,26 +303,14 @@ server <- function(input, output, session) {
     opinion_history <- cbind(opinion_history, opinions)
     frac_mat <- t(frac_mat)
     colnames(frac_mat) <- levels
-    # reconstruct_bipartite <- function(members, n, m) {
-    #   i <- integer(0); j <- integer(0)
-    #   for (g in seq_len(m)) {
-    #     ids <- members[[g]]
-    #     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-    #   }
-    #   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-    # }
-    # 
-    # if (rig_dirty) {
-    #   bipartite <- reconstruct_bipartite(members, n, m)
-    #   RIG <- bipartite_to_rig(bipartite)
-    # }
+    if (rig_dirty) {
+      bipartite <- reconstruct_bipartite(members, n, m)
+      RIG <- bipartite_to_rig(bipartite)
+    }
 
     list(
-      
-      # comment
       B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
-      opinions=opinions, #opinions0=opinions0,
-      #
+      opinions=opinions,
       members0=members0,frac_mat=frac_mat,
       opinion_history=opinion_history,
       num_opinions=num_opinions,members=members
@@ -308,13 +321,9 @@ server <- function(input, output, session) {
   # --- Output ---
   #==========================
   
-  #---------------
-  # comment
-  #output$rig0Plot <- renderPlot({ req(simData()) ; visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
-  
   output$rig0Plot <- renderPlot({
-    req(simData())           # simulation must exist
-    req(input$show_rig0)     # checkbox must be TRUE
+    req(simData())
+    req(input$show_rig0)
     
     visual_step_multi(
       simData()$RIG0,
@@ -324,8 +333,8 @@ server <- function(input, output, session) {
   })
   
   output$rigPlot <- renderPlot({
-    req(simData())           # simulation must exist
-    req(input$show_rig)     # checkbox must be TRUE
+    req(simData())
+    req(input$show_rig)
     
     visual_step_multi(
       simData()$RIG,
@@ -334,18 +343,20 @@ server <- function(input, output, session) {
     )
   })
   
-  # output$rigPlot <- renderPlot({ req(simData()); visual_step_multi(simData()$RIG,
-  #                                                                  simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
-  output$bipartite0Plot <- renderPlot({     req(simData())           # simulation must exist
-    req(input$show_rig0)     # checkbox must be TRUE; 
-    visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
+  output$bipartite0Plot <- renderPlot({
+    req(simData())
+    req(input$show_rig0)
+
+    visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions)
+  })
   
-  output$bipartitePlot <- renderPlot({     
-    req(simData())           # simulation must exist
-    req(input$show_rig)     # checkbox must be TRUE; 
-    visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
-  
-  #---------------
+  output$bipartitePlot <- renderPlot({
+    req(simData())
+    req(input$show_rig)
+
+    visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions)
+  })
+
   output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })

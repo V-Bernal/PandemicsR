@@ -86,9 +86,8 @@ while (t < t_max) {
   valid <- Tot >= 2
   voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
   
-  # The rate of joining a group for someone not yet part of a group is c/m.
-  # The rate of leaving a group is
-  join_term <- (c_param / m) * (n - Tot)/n
+  # Each missing individual-group edge joins at rate c/m.
+  join_term <- (c_param / m) * (n - Tot)
   
   # The rate of leave a group is B+ or B- depending on the thershold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)

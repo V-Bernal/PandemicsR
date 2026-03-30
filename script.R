@@ -12,6 +12,8 @@ num_opinions <- 2
 lambda <- 0.5 # "Init: Bipartite link density lambda"
 c_param <- 0.4 # rate of joining a group
 gamma <- 0.5 # Voter rate parameter
+run_voter <- TRUE
+run_schelling <- TRUE
 
 beta_plus <- 0.5 # leave rate
 beta_minus <- 0.2 # leave rate
@@ -82,18 +84,26 @@ while (t < t_max) {
   # new
   voter_term <- numeric(m)
   valid <- Tot >= 2
-  voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+  if (run_voter) {
+    voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+  }
   
-  # The rate of joining a group for someone not yet part of a group is c/m.
-  # The rate of leaving a group is
-  join_term <- (c_param / m) * (n - Tot)/n
+  # Each missing individual-group edge joins at rate c/m.
+  join_term <- numeric(m)
+  if (run_schelling) {
+    join_term <- (c_param / m) * (n - Tot)
+  }
   
   # The rate of leave a group is B+ or B- depending on the thershold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
   frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
   
-  leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-  leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+  leaveR_rate <- numeric(m)
+  leaveB_rate <- numeric(m)
+  if (run_schelling) {
+    leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+    leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+  }
 
   # The rate at which the process leaves the state
   lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate
@@ -256,4 +266,3 @@ par(mfrow =c(1,1))
 #heatmapPlot(opinion_history, num_opinions)
 visual_histo_pergroup(opinion_history[,1], num_opinions, members0)
 visual_histo_pergroup(opinion_history[,ncol( opinion_history)], num_opinions, members)
-
