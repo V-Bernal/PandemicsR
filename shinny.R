@@ -46,6 +46,10 @@ password_gate_card <- function(error_message = NULL) {
   )
 }
 
+param_help <- function(text) {
+  tags$p(class = "param-help", text)
+}
+
 #==========================
 # --- UI ---
 #==========================
@@ -56,24 +60,38 @@ dashboard_ui <- tagList(
     
     sidebarPanel(
       numericInput("n", "Number of individuals", value = 15, min = 5),
+      param_help("Total number of individuals in the simulation."),
       numericInput("m", "Number of groups", value = 3, min = 2),
+      param_help("Total number of groups that individuals can join."),
       numericInput("timesteps", "Iterations", value = 1000),
+      param_help("Maximum Gillespie time horizon for one simulation run."),
 
       sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 10),
+      param_help("Higher values create a denser initial individual-group membership structure."),
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
+      param_help("Controls how quickly outsiders join groups."),
 
       #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
+      param_help("Controls how quickly mixed groups trigger voter opinion updates."),
       sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
+      param_help("Leaving rate when an opinion is underrepresented inside a group."),
       sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
+      param_help("Leaving rate when an opinion is already well represented inside a group."),
       sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
+      param_help("Minimum same-opinion share needed to avoid the higher leaving rate."),
 
       checkboxInput("runVoter", "Enable voter dynamics", value = TRUE),
+      param_help("Turns opinion updates on or off."),
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
+      param_help("This app version currently uses two opinion states."),
       checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
+      param_help("Turns group joining and leaving dynamics on or off."),
       actionButton("runSim", "Run Simulation"),
       checkboxInput("show_rig0", "Show initial Graph", value = TRUE),
-      checkboxInput("show_rig", "Show final Graph", value = TRUE)
+      param_help("Displays the initial RIG and bipartite graph."),
+      checkboxInput("show_rig", "Show final Graph", value = TRUE),
+      param_help("Displays the final RIG and bipartite graph after the run.")
       
           ),
 
@@ -128,6 +146,13 @@ ui <- fluidPage(
         margin-top: 12px;
         color: #b42318;
         font-weight: 600;
+      }
+      .param-help {
+        margin-top: -8px;
+        margin-bottom: 12px;
+        color: #5b6879;
+        font-size: 12px;
+        line-height: 1.35;
       }
     "))
   ),
