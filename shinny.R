@@ -72,8 +72,8 @@ dashboard_ui <- tagList(
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
       checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
       actionButton("runSim", "Run Simulation"),
-      checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
-      checkboxInput("show_rig", "Show final Graph", value = FALSE)
+      checkboxInput("show_rig0", "Show initial Graph", value = TRUE),
+      checkboxInput("show_rig", "Show final Graph", value = TRUE)
       
           ),
 
