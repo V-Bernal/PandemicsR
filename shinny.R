@@ -6,51 +6,6 @@ for (r_file in sort(list.files("PandemicsR-main/R", pattern = "\\.R$", full.name
   sys.source(r_file, envir = environment())
 }
 
-reconstruct_bipartite <- function(members, n, m) {
-  group_sizes <- lengths(members)
-  if (!any(group_sizes)) {
-    return(sparseMatrix(i = integer(0), j = integer(0), x = integer(0), dims = c(n, m)))
-  }
-
-  sparseMatrix(
-    i = unlist(members, use.names = FALSE),
-    j = rep.int(seq_len(m), group_sizes),
-    x = 1L,
-    dims = c(n, m)
-  )
-}
-
-sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries = 25L) {
-  for (attempt in seq_len(max_tries)) {
-    candidate <- sample.int(n, 1L)
-    if (!(group_i %in% groups_of_individual[[candidate]])) {
-      return(candidate)
-    }
-  }
-
-  available <- setdiff(seq_len(n), members[[group_i]])
-  if (!length(available)) {
-    return(NA_integer_)
-  }
-
-  if (length(available) == 1L) {
-    return(available)
-  }
-
-  sample(available, 1L)
-}
-
-remove_value_fast <- function(vec, value) {
-  idx <- match(value, vec, nomatch = 0L)
-  if (idx == 0L) {
-    return(vec)
-  }
-
-  last_idx <- length(vec)
-  vec[idx] <- vec[last_idx]
-  vec[-last_idx]
-}
-
 resolve_app_password <- function() {
   password <- Sys.getenv("APP_PASSWORD", unset = "")
   if (nzchar(password)) {
@@ -84,10 +39,10 @@ param_help <- function(text) {
 # --- UI ---
 #==========================
 dashboard_ui <- tagList(
-  titlePanel(h2("Voter - Schelling Multi-Membership Simulation")),
-  
+  titlePanel(h2("Voter - Schelling - Epidemic Multi-Membership Simulation")),
+
   sidebarLayout(
-    
+
     sidebarPanel(
       numericInput("n", "Number of individuals", value = 15, min = 5),
       param_help("Total number of individuals in the simulation."),
@@ -101,20 +56,33 @@ dashboard_ui <- tagList(
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
       param_help("Controls how quickly outsiders join groups."),
 
-      #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
-      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
-      param_help("Controls how quickly mixed groups trigger voter opinion updates."),
+      sliderInput("gamma", "Voter: light-state gamma", min = 0, step = 0.01, max = 20, value = 2.5),
+      param_help("Baseline opinion-change rate for the light shades."),
+      sliderInput("gamma_dark", "Voter: dark-state gamma", min = 0, step = 0.01, max = 5, value = 0.2),
+      param_help("Dark shades are more reluctant to change opinion."),
+      sliderInput("infected_dark_multiplier", "Voter: infected dark-state multiplier", min = 1, step = 0.1, max = 10, value = 4),
+      param_help("Boosts dark-state opinion changes when those individuals are infected."),
+
       sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
-      param_help("Leaving rate when an opinion is underrepresented inside a group."),
+      param_help("Leaving rate when a camp is underrepresented inside a group."),
       sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
-      param_help("Leaving rate when an opinion is already well represented inside a group."),
+      param_help("Leaving rate when a camp is already well represented inside a group."),
       sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
-      param_help("Minimum same-opinion share needed to avoid the higher leaving rate."),
+      param_help("Minimum same-camp share needed to avoid the higher leaving rate."),
+
+      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
+      param_help("Choose either the legacy 2-state mode or the ordered 4-state mode."),
+      sliderInput("beta_red_epi", "Epidemic: infection rate red camp", min = 0, step = 0.01, max = 2, value = 0.7),
+      param_help("Dark red and light red share this infection rate in the random-mixing SIR process."),
+      sliderInput("beta_blue_epi", "Epidemic: infection rate blue camp", min = 0, step = 0.01, max = 2, value = 0.25),
+      param_help("Dark blue and light blue share this infection rate."),
+      sliderInput("gamma_sir", "Epidemic: recovery rate", min = 0, step = 0.01, max = 2, value = 0.25),
+      param_help("Common recovery rate for infected individuals."),
+      sliderInput("initial_infected_fraction", "Epidemic: initial infected fraction", min = 0, step = 0.01, max = 0.5, value = 0.05),
+      param_help("Fraction of individuals seeded as infected at time 0."),
 
       checkboxInput("runVoter", "Enable voter dynamics", value = TRUE),
       param_help("Turns opinion updates on or off."),
-      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
-      param_help("This app version currently uses two opinion states."),
       checkboxInput("runSchelling", "Enable Schelling dynamics", value = TRUE),
       param_help("Turns group joining and leaving dynamics on or off."),
       actionButton("runSim", "Run Simulation"),
@@ -123,33 +91,38 @@ dashboard_ui <- tagList(
       param_help("Displays the initial RIG and bipartite graph."),
       checkboxInput("show_rig", "Show final Graph", value = TRUE),
       param_help("Displays the final RIG and bipartite graph after the run.")
-      
-          ),
+    ),
 
     mainPanel(
       tabsetPanel(
         tabPanel("Graphs",
-                 plotOutput("rig0Plot", height = "500px"),
-                 plotOutput("rigPlot", height = "500px"),
-                 plotOutput("bipartite0Plot", height = "500px"),
-                 plotOutput("bipartitePlot", height = "500px"),
+          plotOutput("rig0Plot", height = "500px"),
+          plotOutput("rigPlot", height = "500px"),
+          plotOutput("bipartite0Plot", height = "500px"),
+          plotOutput("bipartitePlot", height = "500px")
         ),
-        tabPanel("Voter dynamics",
-                 
-                 h3("Overall opinions"),
-                 plotOutput("histo"),
-                 
-                 h3("Time evolution of opinions"),
-                 plotOutput("fracPlot", width = "500px", height = "400px")#,
-                 #plotOutput("heatmapPlot", height = "350px")
+        tabPanel("Opinion dynamics",
+          h3("Overall opinions"),
+          plotOutput("histo"),
+
+          h3("Time evolution of opinions"),
+          plotOutput("fracPlot", width = "650px", height = "400px")
+        ),
+        tabPanel("Epidemics",
+          h3("SIR dynamics"),
+          plotOutput("sirPlot", width = "650px", height = "400px"),
+          h3("Final attack rate by camp"),
+          plotOutput("campAttackPlot", width = "500px", height = "320px"),
+          h3("Final SIR counts by camp"),
+          tableOutput("campSirTable"),
+          verbatimTextOutput("epiSummary")
         ),
         tabPanel("Others",
-                 
-                 h3("Group-wise initial opinions"),
-                 plotOutput("histogramGroup0"),
-                 
-                 h3("Group-wise final opinions"),
-                 plotOutput("histogramGroup")
+          h3("Group-wise initial opinions"),
+          plotOutput("histogramGroup0"),
+
+          h3("Group-wise final opinions"),
+          plotOutput("histogramGroup")
         )
       )
     )
@@ -218,7 +191,9 @@ server <- function(input, output, session) {
   expected_password <- resolve_app_password()
   required_input_ids <- c(
     "n", "m", "timesteps", "lambda", "c_param", "gamma",
+    "gamma_dark", "infected_dark_multiplier",
     "beta_plus", "beta_minus", "T_threshold", "Numopinions",
+    "beta_red_epi", "beta_blue_epi", "gamma_sir", "initial_infected_fraction",
     "runVoter", "runSchelling"
   )
 
@@ -281,242 +256,26 @@ server <- function(input, output, session) {
 
     result <- tryCatch(
       withProgress(message = "Running simulation", value = 0.15, {
-    #==========================
-    # 1. User parameters
-    #==========================
-    n <- input$n; m <- input$m; t_max <- input$timesteps
-    lambda <- input$lambda; c_param <- input$c_param
-    gamma <- input$gamma; beta_plus <- input$beta_plus; beta_minus <- input$beta_minus
-    T_threshold <- input$T_threshold
-    num_opinions <- input$Numopinions
-    run_voter <- isTRUE(input$runVoter)
-    run_schelling <- isTRUE(input$runSchelling)
-
-    #==========================
-    # 2. Model parameters
-    #==========================
-    # Homogeneous weights
-    ind_w <- rep(lambda, n) #ind_w <- runif(n, 1, 2)
-    grp_w <- rep(lambda * n / m, m) #grp_w <- runif(m, 1, 2) * n / m
-
-    # bipartite and RIG
-    B0 <- generate_bipartite(n, m, ind_w, grp_w) #B0 <- generate_bipartite(n, m, ind_w, grp_w, lambda)
-    RIG0 <- bipartite_to_rig(B0)
-    RIG <- RIG0; bipartite <- B0
-
-    # Voter tracker
-    opinions <- initialize_opinions_multi(n, num_opinions)
-    #opinions0 <- opinions
-    opinion_history <- matrix(opinions, ncol = 1)
-
-    levels <- sort(unique(as.vector(opinions)))
-    frac_history <- list(vapply(levels, function(op) sum(opinions == op) / n, numeric(1)))
-    time_history <- list(0)
-
-    # Group tracker
-    members <- vector("list", m)
-    red_members <- vector("list", m)
-    blue_members <- vector("list", m)
-    groups_of_individual <- vector("list", n) # IDs of all groups that individual i belongs to
-
-    for (g in seq_len(m)) {
-      ids <- which(bipartite[, g] == 1)
-      members[[g]] <- ids
-      red_members[[g]] <- ids[opinions[ids] == -1]
-      blue_members[[g]] <- ids[opinions[ids] == +1]
-      for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
-    }
-
-    Ri <- sapply(red_members, length)
-    Bi <- sapply(blue_members, length)
-    rig_dirty <- FALSE
-
-    #----- NEW
-    event_counter <- 0L
-    record_every <- max(1L, as.integer(n))
-    members0 <- lapply(members, identity)
-    
-    #==========================
-    # Combined Voter and Schelling model dynamics Gillespie algorithm
-    #==========================
-    t <- 0
-    while (t < t_max) {
-
-      # The rate of interaction
-      Tot <- Ri + Bi
-      #voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
-      #voter_term[Tot < 2] <- 0
-      
-      # new
-      voter_term <- numeric(m)
-      valid <- Tot >= 2
-      if (run_voter) {
-        voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
-      }
-
-      # Each missing individual-group edge joins at rate c/m, so the total
-      # group join rate scales with the number of outsiders.
-      join_term <- numeric(m)
-      if (run_schelling) {
-        join_term <- (c_param / m) * (n - Tot)
-      }
-
-      # The rate of leave a group is B+ or B- depending on the thershold
-      frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
-      frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
-      
-      leaveR_rate <- numeric(m)
-      leaveB_rate <- numeric(m)
-      if (run_schelling) {
-        leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-        leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
-      }
-
-      # The rate at which the process leaves the state
-      lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate
-      lambda_tot <- sum(lambda_i)
-      if (lambda_tot <= 0) break
-
-      # Random group selection
-      group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / lambda_tot) else 1
-
-      Ri_g <- Ri[group_i]; Bi_g <- Bi[group_i]
-      voter_g <- voter_term[group_i]; join_g <- join_term[group_i]
-      leaveR_g <- leaveR_rate[group_i]; leaveB_g <- leaveB_rate[group_i]
-
-      rates_vec <- c(ifelse(voter_g>0, voter_g/2, 0), ifelse(voter_g>0, voter_g/2, 0), join_g, leaveR_g, leaveB_g)
-      if (sum(rates_vec)<=0) next
-
-      # Apply a random move in Gillespie time
-
-      # Gillespie time
-      dt <- rexp(1, lambda_tot)
-      t <- t + dt
-      if (t >= t_max) break
-
-      # Move step
-      # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
-      # 4: Remove internal Red 5: Remove internal Blue
-      move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
-
-      if (move==1 && Ri_g>0) { # Red to Blue
-        chosen <- sample(red_members[[group_i]],1)
-        opinions[chosen] <- +1
-        member_groups <- groups_of_individual[[chosen]]
-        updated_groups <- integer(0)
-        for (g in member_groups) {
-          idx <- match(chosen, red_members[[g]], nomatch = 0L)
-          if (idx > 0L) {
-            last_idx <- length(red_members[[g]])
-            red_members[[g]][idx] <- red_members[[g]][last_idx]
-            red_members[[g]] <- red_members[[g]][-last_idx]
-            blue_members[[g]] <- c(blue_members[[g]], chosen)
-            updated_groups <- c(updated_groups, g)
-          }
-        }
-        if (length(updated_groups) > 0L) {
-          Ri[updated_groups] <- Ri[updated_groups] - 1L
-          Bi[updated_groups] <- Bi[updated_groups] + 1L
-        }
-
-      } else if (move==2 && Bi_g>0) { # Blue to Red
-        chosen <- sample(blue_members[[group_i]],1)
-        opinions[chosen] <- -1
-        member_groups <- groups_of_individual[[chosen]]
-        updated_groups <- integer(0)
-        for (g in member_groups) {
-          idx <- match(chosen, blue_members[[g]], nomatch = 0L)
-          if (idx > 0L) {
-            last_idx <- length(blue_members[[g]])
-            blue_members[[g]][idx] <- blue_members[[g]][last_idx]
-            blue_members[[g]] <- blue_members[[g]][-last_idx]
-            red_members[[g]] <- c(red_members[[g]], chosen)
-            updated_groups <- c(updated_groups, g)
-          }
-        }
-        if (length(updated_groups) > 0L) {
-          Bi[updated_groups] <- Bi[updated_groups] - 1L
-          Ri[updated_groups] <- Ri[updated_groups] + 1L
-        }
-
-      } else if (move==3 && Tot[group_i] < n) { # Join
-        chosen <- sample_outsider(group_i, members, groups_of_individual, n)
-        if (is.na(chosen)) {
-          next
-        }
-
-        members[[group_i]] <- c(members[[group_i]], chosen)
-        groups_of_individual[[chosen]] <- c(groups_of_individual[[chosen]], group_i)
-        if (opinions[chosen]==-1) {
-          red_members[[group_i]] <- c(red_members[[group_i]], chosen)
-          Ri[group_i] <- Ri[group_i]+1
-        } else {
-          blue_members[[group_i]] <- c(blue_members[[group_i]], chosen)
-          Bi[group_i] <- Bi[group_i]+1
-        }
-        rig_dirty <- TRUE
-
-      } else if (move==4 && Ri_g>0) {
-        chosen_idx <- sample.int(Ri_g,1)
-        chosen <- red_members[[group_i]][chosen_idx]
-        red_members[[group_i]][chosen_idx] <- red_members[[group_i]][length(red_members[[group_i]])]
-        red_members[[group_i]] <- red_members[[group_i]][-length(red_members[[group_i]])]
-
-        members[[group_i]] <- remove_value_fast(members[[group_i]], chosen)
-        groups_of_individual[[chosen]] <- remove_value_fast(groups_of_individual[[chosen]], group_i)
-        Ri[group_i] <- Ri[group_i]-1
-        rig_dirty <- TRUE
-
-      } else if (move==5 && Bi_g>0) {
-        chosen_idx <- sample.int(Bi_g,1)
-        chosen <- blue_members[[group_i]][chosen_idx]
-        blue_members[[group_i]][chosen_idx] <- blue_members[[group_i]][length(blue_members[[group_i]])]
-        blue_members[[group_i]] <- blue_members[[group_i]][-length(blue_members[[group_i]])]
-
-        members[[group_i]] <- remove_value_fast(members[[group_i]], chosen)
-        groups_of_individual[[chosen]] <- remove_value_fast(groups_of_individual[[chosen]], group_i)
-        Bi[group_i] <- Bi[group_i]-1
-        rig_dirty <- TRUE
-      }
-
-      # ---- record step ----
-      event_counter <- event_counter + 1
-
-      #if (event_counter %% record_every == 0) {
-      #  opinion_history <- cbind(opinion_history, opinions)
-      #}
-      
-      if (event_counter %% record_every == 0) {
-        frac_temp <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
-        frac_history[[length(frac_history) + 1L]] <- frac_temp
-        time_history[[length(time_history) + 1L]] <- t
-      }
-      
-    }
-
-    # Final opinion history
-    opinion_history <- cbind(opinion_history, opinions)
-    final_frac <- vapply(levels, function(op) sum(opinions == op) / n, numeric(1))
-    if (tail(unlist(time_history, use.names = FALSE), 1) < t ||
-        any(frac_history[[length(frac_history)]] != final_frac)) {
-      frac_history[[length(frac_history) + 1L]] <- final_frac
-      time_history[[length(time_history) + 1L]] <- t
-    }
-    frac_mat <- do.call(rbind, frac_history)
-    time_history <- unlist(time_history, use.names = FALSE)
-    colnames(frac_mat) <- levels
-    if (rig_dirty) {
-      bipartite <- reconstruct_bipartite(members, n, m)
-      RIG <- bipartite_to_rig(bipartite)
-    }
-
-    list(
-      B0=B0, B=bipartite, RIG=RIG, RIG0=RIG0,
-      opinions=opinions,
-      members0=members0,frac_mat=frac_mat,time_history=time_history,
-      opinion_history=opinion_history,
-      num_opinions=num_opinions,members=members,final_time=t
-    )
+        simulate_hybrid_model(
+          n = input$n,
+          m = input$m,
+          t_max = input$timesteps,
+          lambda = input$lambda,
+          c_param = input$c_param,
+          gamma_light = input$gamma,
+          gamma_dark = input$gamma_dark,
+          infected_dark_multiplier = input$infected_dark_multiplier,
+          beta_plus = input$beta_plus,
+          beta_minus = input$beta_minus,
+          T_threshold = input$T_threshold,
+          num_opinions = input$Numopinions,
+          run_voter = isTRUE(input$runVoter),
+          run_schelling = isTRUE(input$runSchelling),
+          beta_red = input$beta_red_epi,
+          beta_blue = input$beta_blue_epi,
+          gamma_sir = input$gamma_sir,
+          initial_infected_fraction = input$initial_infected_fraction
+        )
       }),
       error = function(err) err
     )
@@ -604,9 +363,19 @@ server <- function(input, output, session) {
 
   output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, simData()$time_history) })
   output$histo <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
-  #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
-  #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
-  #output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$B) })
+  output$sirPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_sir_time(simData()$sir_mat, simData()$time_history) })
+  output$campAttackPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_epidemic_camps(simData()$camp_attack_rate) })
+  output$campSirTable <- renderTable({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    round(as.data.frame(simData()$final_camp_sir), 3)
+  }, rownames = TRUE)
+  output$epiSummary <- renderPrint({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    cat(sprintf("Overall attack rate: %.2f\n", simData()$overall_attack_rate))
+    cat(sprintf("Final recorded simulation time: %.2f\n", simData()$final_time))
+  })
   output$histogramGroup0 <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
   output$histogramGroup <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
   

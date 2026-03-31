@@ -22,6 +22,7 @@ visual_histo_pergroup <- function(opinions, num_opinions, members) {
 
   # Helper objects
   levels_vec <- get_levels_vec(num_opinions)
+  state_labels <- get_state_labels(num_opinions)
   my_palette <- get_palette(num_opinions)
 
   m <- length(members)
@@ -39,7 +40,7 @@ visual_histo_pergroup <- function(opinions, num_opinions, members) {
     as.numeric(tab)
   })
 
-  rownames(freq_mat) <- levels_vec
+  rownames(freq_mat) <- state_labels
   colnames(freq_mat) <- paste("group", seq_len(m))
 
   # Plot
@@ -47,5 +48,6 @@ visual_histo_pergroup <- function(opinions, num_opinions, members) {
           names.arg = colnames(freq_mat),
           col = my_palette,
           main = "Opinions",
-          beside = FALSE)
+          beside = FALSE,
+          las = 2)
 }

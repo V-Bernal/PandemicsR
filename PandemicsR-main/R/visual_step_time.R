@@ -20,7 +20,7 @@
 #' @export
 visual_step_time <- function(frac_mat, num_opinions, time_points = NULL){
 
-  levels_vec <- get_levels_vec(num_opinions)
+  state_labels <- get_state_labels(num_opinions)
   my_palette <- get_palette(num_opinions)
 
   if (is.null(time_points) || length(time_points) != nrow(frac_mat)) {
@@ -43,10 +43,12 @@ visual_step_time <- function(frac_mat, num_opinions, time_points = NULL){
   box()
   title(xlab = xlab, ylab = "Opinion fraction")
 
-  for (k in 1:num_opinions) {
+  for (k in seq_len(num_opinions)) {
     lines(x = time_points, y = frac_mat[,k ],
           lwd = 2, col = my_palette[k])
   }
+
+  legend("right", legend = state_labels, col = my_palette, lwd = 2, bty = "n")
 
   # Update line plot for fraction of +1
   #Sys.sleep(0.05) # pause so you can see the update
