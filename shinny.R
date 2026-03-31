@@ -44,11 +44,11 @@ dashboard_ui <- tagList(
   sidebarLayout(
 
     sidebarPanel(
-      numericInput("n", "Number of individuals", value = 15, min = 5),
+      numericInput("n", "Number of individuals", value = 30, min = 5),
       param_help("Total number of individuals in the simulation."),
       numericInput("m", "Number of groups", value = 3, min = 2),
       param_help("Total number of groups that individuals can join."),
-      numericInput("timesteps", "Iterations", value = 1000),
+      numericInput("timesteps", "Iterations", value = 100),
       param_help("Maximum Gillespie time horizon for one simulation run."),
 
       sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 0.5),
@@ -72,13 +72,13 @@ dashboard_ui <- tagList(
 
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
       param_help("Choose either the legacy 2-state mode or the ordered 4-state mode."),
-      sliderInput("beta_red_epi", "Epidemic: infection rate red camp", min = 0, step = 0.01, max = 2, value = 0.7),
+      sliderInput("beta_red_epi", "Epidemic: infection rate red camp", min = 0, step = 0.01, max = 2, value = 0.9),
       param_help("Dark red and light red share this infection rate in the random-mixing SIR process."),
-      sliderInput("beta_blue_epi", "Epidemic: infection rate blue camp", min = 0, step = 0.01, max = 2, value = 0.25),
+      sliderInput("beta_blue_epi", "Epidemic: infection rate blue camp", min = 0, step = 0.01, max = 2, value = 0.35),
       param_help("Dark blue and light blue share this infection rate."),
-      sliderInput("gamma_sir", "Epidemic: recovery rate", min = 0, step = 0.01, max = 2, value = 0.25),
+      sliderInput("gamma_sir", "Epidemic: recovery rate", min = 0, step = 0.01, max = 2, value = 0.22),
       param_help("Common recovery rate for infected individuals."),
-      sliderInput("initial_infected_fraction", "Epidemic: initial infected fraction", min = 0, step = 0.01, max = 0.5, value = 0.05),
+      sliderInput("initial_infected_fraction", "Epidemic: initial infected fraction", min = 0, step = 0.01, max = 0.5, value = 0.10),
       param_help("Fraction of individuals seeded as infected at time 0."),
 
       checkboxInput("runVoter", "Enable voter dynamics", value = TRUE),
