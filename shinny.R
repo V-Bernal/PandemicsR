@@ -56,11 +56,11 @@ dashboard_ui <- tagList(
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
       param_help("Controls how quickly outsiders join groups."),
 
-      sliderInput("gamma", "Voter: light-state gamma", min = 0, step = 0.01, max = 20, value = 2.5),
+      sliderInput("gamma", "Voter: light-state gamma", min = 0, step = 0.01, max = 20, value = 0.1),
       param_help("Baseline opinion-change rate for the light shades."),
-      sliderInput("gamma_dark", "Voter: dark-state gamma", min = 0, step = 0.01, max = 5, value = 0.2),
+      sliderInput("gamma_dark", "Voter: dark-state gamma", min = 0, step = 0.01, max = 5, value = 0.02),
       param_help("Dark shades are more reluctant to change opinion."),
-      sliderInput("infected_dark_multiplier", "Voter: infected dark-state multiplier", min = 1, step = 0.1, max = 10, value = 4),
+      sliderInput("infected_dark_multiplier", "Voter: infected dark-state multiplier", min = 1, step = 0.1, max = 10, value = 1.5),
       param_help("Boosts dark-state opinion changes when those individuals are infected."),
 
       sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
@@ -364,7 +364,7 @@ server <- function(input, output, session) {
   output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, simData()$time_history) })
   output$histo <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   output$sirPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_sir_time(simData()$sir_mat, simData()$time_history) })
-  output$campAttackPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_epidemic_camps(simData()$camp_attack_rate) })
+  output$campAttackPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_epidemic_camps(simData()$final_camp_sir) })
   output$campSirTable <- renderTable({
     req(isTRUE(is_authenticated()))
     req(simData())
