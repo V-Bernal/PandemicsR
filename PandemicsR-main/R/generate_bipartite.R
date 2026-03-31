@@ -67,11 +67,16 @@ generate_bipartite <- function(n, m, individual_weights, group_weights) {
   # Expected Poisson edges
   expected_edges <- tcrossprod(individual_weights, group_weights) / total_group_weight
   # Generate Poisson multi-edges
-  bipartite_matrix <- Matrix::Matrix(rpois(n * m, lambda = expected_edges),
-                                     nrow = n, ncol = m, sparse = TRUE)
+  bipartite_matrix <- Matrix::Matrix(
+    matrix(
+      rpois(length(expected_edges), lambda = c(expected_edges)),
+      nrow = n,
+      ncol = m
+    ),
+    sparse = TRUE
+  )
   return(bipartite_matrix)
 }
-
 
 
 
