@@ -23,5 +23,5 @@ visual_step_time
 #---------------------------------
 }
 \author{
-Victor Bernal \email{victor.arturo.bernal@gmail.com}
+Victor Bernal
 }
