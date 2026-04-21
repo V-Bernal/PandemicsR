@@ -6,8 +6,8 @@ library(PandemicsR)
 #==========================
 
 n <- 15 # number of individuals
-m <- 3 #
-num_opinions <- 4
+m <- 3 # number of groups
+num_opinions <- 4 #----- NEW
 
 lambda <- 0.5 # "Init: Bipartite link density lambda"
 c_param <- 0.4 # rate of joining a group
@@ -18,7 +18,8 @@ beta_minus <- 0.2 # leave rate
 T_threshold <- 0.4 # if fraction of less than T
 
 t_max <- 1000 # Gillespie time
-alpha <- 0.1 # extreme conversion rate
+alpha <- 0.1 # #----- NEW extreme opinion moderate to extreme conversion rate
+alpha_deradicalization <- 0.05 # #----- NEW extreme to moderate opinion conversion rate
 
 #==========================
 # 2. Model parameters
@@ -37,7 +38,8 @@ opinions <- initialize_opinions_multi(n, num_opinions)
 #opinions0 <- opinions
 opinion_history <- matrix(opinions, ncol = 1)
 
-levels <- sort(unique(as.vector(opinions)))
+levels <- sort(unique(as.vector(opinions))) #levels <- c(-2, -1, 1, 2)
+
 frac_mat <- sapply(levels, function(op) {
   sum(opinions == op)/n
 })
@@ -54,12 +56,13 @@ for (g in seq_len(m)) {
   ids <- which(bipartite[, g] == 1)
   members[[g]] <- ids
   #opinion in group
-  red_members[[g]] <- ids[opinions[ids] == -1]
+  red_members[[g]] <- ids[opinions[ids] == -1] #moderate
   blue_members[[g]] <- ids[opinions[ids] == +1]
   outsiders[[g]] <- setdiff(seq_len(n), ids)
   for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
 }
 
+# moderates
 Ri <- sapply(red_members, length)
 Bi <- sapply(blue_members, length)
 rig_dirty <- FALSE
@@ -68,7 +71,7 @@ rig_dirty <- FALSE
 #----- NEW
 event_counter <- 0
 record_every <- n
-members0<-members
+members0 <- members
 
 #==========================
 # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -90,36 +93,46 @@ while (t < t_max) {
   # The rate of leaving a group is
   join_term <- (c_param / m) * (n - Tot)/n
   
-  # The rate of leave a group is B+ or B- depending on the thershold
+  # The rate of leave a group is B+ or B- depending on the threshold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
   frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
   
   leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
   leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
 
-  # -----------------------------
-  # New: extremist recruitment rates
+  #==========================
+  # New: extremist recruitment rates (and num of extremes)
+  #==========================
   rate_extreme_red  <- numeric(m)
   rate_extreme_blue <- numeric(m)
-
+  rate_deradicalize_red <- numeric(m)
+  rate_deradicalize_blue <- numeric(m)
+  
   for (g in seq_len(m)) {
     num_extreme_red   <- sum(opinions[members[[g]]] == -2)
     num_extreme_blue  <- sum(opinions[members[[g]]] ==  2)
     num_moderate_red  <- sum(opinions[members[[g]]] == -1)
     num_moderate_blue <- sum(opinions[members[[g]]] ==  1)
-
-    rate_extreme_red[g]  <- alpha * num_extreme_red  * num_moderate_red
-    rate_extreme_blue[g] <- alpha * num_extreme_blue * num_moderate_blue
+    #Tot_g <- length(members[[g]])
+    #valid <- Tot_g >= 2
+    rate_extreme_red[g]  <- alpha * num_extreme_red  * num_moderate_red #/ Tot_g
+    rate_extreme_blue[g] <- alpha * num_extreme_blue * num_moderate_blue #/ Tot_g
+    
+    # same 
+    rate_deradicalize_red[g] <- alpha_deradicalization * num_extreme_red  * num_moderate_red
+    rate_deradicalize_blue[g] <- alpha_deradicalization * num_extreme_blue * num_moderate_blue
   }
   # -----------------------------
 
   # The rate at which the process leaves the state
   lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate +
-    rate_extreme_red + rate_extreme_blue
+    rate_extreme_red + rate_extreme_blue + rate_deradicalize_red + rate_deradicalize_blue
   lambda_tot <- sum(lambda_i)
   if (lambda_tot <= 0) break
 
-  # Random group selection
+  #====================
+  # Group selection at random
+  #====================
   group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / lambda_tot) else 1
 
   Ri_g <- Ri[group_i]; Bi_g <- Bi[group_i]
@@ -134,23 +147,44 @@ while (t < t_max) {
     rate_extreme_red[group_i], # move 6
     rate_extreme_blue[group_i] # move 7
   )
+  
+  # new
+  rates_vec <- c(rates_vec,
+                 rate_deradicalize_red[group_i], # move 8
+                 rate_deradicalize_blue[group_i] # move 9
+  )
 
   if (sum(rates_vec)<=0) next
 
+  #================
   # Apply a random move in Gillespie time
-
   # Gillespie time
+  #================
   dt <- rexp(1, lambda_tot)
   t <- t + dt
   if (t >= t_max) break
 
+  #================
   # Move step
-  # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
-  # 4: Remove internal Red 5: Remove internal Blue
-  # 6 and 7: extreme turns moderate of same color
+  #================
+  # 1: Red to Blue. (voter) 
+  # 2: Blue to Red. (voter)
+  # 3: Add external to group
+  # 4: Remove internal Red 
+  # 5: Remove internal Blue
+  #============
+  # 6 and 7: moderate turns extreme of same color (voter)
+  #============
+  # Trim rate vec according to the number of moves in simulation
+  # Voter: moves 1 and 2 
+  # Schelling: moves 3 to 5
+  # trimmer <- c(rep(input$runVoter, 2), rep(input$runSchelling, 3) , rep(input$runVoter, 2))
+  # if (length(trimmer) == length(rates_vec)) { rates_vec <- rates_vec * trimmer } #next
+  #============
+  
   move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
-
-  if (move==1 && Ri_g>0) { # Red to Blue
+  
+  if (move==1 && Ri_g>0 ) { # Red to Blue
     chosen <- sample(red_members[[group_i]],1)
     opinions[chosen] <- +1
     # update every group where individual belongs
@@ -165,7 +199,7 @@ while (t < t_max) {
       }
     }
 
-  } else if (move==2 && Bi_g>0) { # Blue to Red
+  } else if (move==2 && Bi_g>0 ) { # Blue to Red
     chosen <- sample(blue_members[[group_i]],1)
     opinions[chosen] <- -1
     # update every group where individual belongs
@@ -224,12 +258,14 @@ while (t < t_max) {
     outsiders[[group_i]] <- c(outsiders[[group_i]], chosen)
     Bi[group_i] <- Bi[group_i]-1
     rig_dirty <- TRUE
-  } else if (move == 6 &&
+  
+    } else if (move == 6 &&
                rate_extreme_red[group_i] > 0 &&
                Ri[group_i] > 0) {
 
     moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
     extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
+    
     if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
       chosen_moderate <- sample(moderates, 1)
       opinions[chosen_moderate] <- -2
@@ -240,7 +276,7 @@ while (t < t_max) {
         if (length(idx) > 0) {
           red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])]
           red_members[[g]] <- red_members[[g]][-length(red_members[[g]])]
-          Ri[g] <- Ri[g] - 1
+          Ri[g] <- Ri[g] - 1 # moderate red turns extreme red
         }
       }
     }
@@ -260,11 +296,57 @@ while (t < t_max) {
         if (length(idx) > 0) {
           blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
           blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
-          Bi[g] <- Bi[g] - 1
+          Bi[g] <- Bi[g] - 1 # moderate blue turns extreme blues
         }
       }
     }
-  }
+  } else if (move == 8 &&
+            rate_deradicalize_red[group_i] > 0 &&
+            Ri[group_i] > 0) {
+    
+    moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
+    extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
+    
+    if (length(moderates) > 0 && length(extremes) > 0) {
+      
+      chosen_extreme <- sample(extremes, 1)
+      opinions[chosen_extreme] <- -1
+      
+      # UPDATE ALL GROUPS OF THE INDIVIDUAL
+      for (g in groups_of_individual[[chosen_extreme]]) {
+        
+        # add to red_members (moderates)
+        red_members[[g]] <- c(red_members[[g]], chosen_extreme)
+        
+        # update count
+        Ri[g] <- Ri[g] + 1
+      }
+    }
+  } else if (move == 9 &&
+             rate_deradicalize_blue[group_i] > 0 &&
+             Bi[group_i] > 0) {
+    
+    moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
+    extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
+    
+    if (length(moderates) > 0 && length(extremes) > 0) {
+      
+      chosen_extreme <- sample(extremes, 1)
+      opinions[chosen_extreme] <- 1
+      
+      # UPDATE ALL GROUPS OF THE INDIVIDUAL
+      for (g in groups_of_individual[[chosen_extreme]]) {
+        
+        # add to blue_members (moderates)
+        blue_members[[g]] <- c(blue_members[[g]], chosen_extreme)
+        
+        # update count
+        Bi[g] <- Bi[g] + 1
+      }
+    }
+  }  
+  
+
   # ---- record step ----
   event_counter <- event_counter + 1
   
@@ -286,15 +368,7 @@ while (t < t_max) {
 opinion_history <- cbind(opinion_history, opinions)
 frac_mat <- t(frac_mat)
 colnames(frac_mat) <- levels
-# reconstruct_bipartite <- function(members, n, m) {
-#   i <- integer(0); j <- integer(0)
-#   for (g in seq_len(m)) {
-#     ids <- members[[g]]
-#     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-#   }
-#   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-# }
-# 
+
 # if (rig_dirty) {
 #   B <- reconstruct_bipartite(members, n, m)
 #   RIG <- bipartite_to_rig(B)
@@ -315,9 +389,10 @@ colnames(frac_mat) <- levels
 #visual_step_multi(RIG, opinion_history[,ncol( opinion_history)], num_opinions)
 #visual_bipartite(B0, opinion_history[,1], num_opinions)
 #visual_bipartite(B, opinion_history[,ncol( opinion_history)], num_opinions)
-visual_step_time(frac_mat, num_opinions)
+visual_step_time(frac_mat, num_opinions, n)
 visual_histo(opinion_history, num_opinions)
 par(mfrow =c(1,1))
 #heatmapPlot(opinion_history, num_opinions)
 visual_histo_pergroup(opinion_history[,1], num_opinions, members0)
 visual_histo_pergroup(opinion_history[,ncol( opinion_history)], num_opinions, members)
+
