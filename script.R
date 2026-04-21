@@ -6,7 +6,7 @@ library(PandemicsR)
 #==========================
 
 n <- 15 # number of individuals
-m <- 3 #
+m <- 3 # number of groups
 num_opinions <- 2
 
 lambda <- 0.5 # "Init: Bipartite link density lambda"
@@ -48,6 +48,7 @@ blue_members <- vector("list", m)
 outsiders <- vector("list", m)
 groups_of_individual <- vector("list", n)
 
+# moderates
 for (g in seq_len(m)) {
   #group
   ids <- which(bipartite[, g] == 1)
@@ -66,7 +67,7 @@ rig_dirty <- FALSE
 #----- NEW
 event_counter <- 0
 record_every <- n
-members0<-members
+members0 <- members
 
 #==========================
 # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -88,7 +89,7 @@ while (t < t_max) {
   # The rate of leaving a group is
   join_term <- (c_param / m) * (n - Tot)/n
   
-  # The rate of leave a group is B+ or B- depending on the thershold
+  # The rate of leave a group is B+ or B- depending on the threshold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
   frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
   
@@ -100,7 +101,9 @@ while (t < t_max) {
   lambda_tot <- sum(lambda_i)
   if (lambda_tot <= 0) break
 
-  # Random group selection
+  #====================
+  # Group selection at random
+  #====================
   group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / lambda_tot) else 1
 
   Ri_g <- Ri[group_i]; Bi_g <- Bi[group_i]
@@ -110,16 +113,31 @@ while (t < t_max) {
   rates_vec <- c(ifelse(voter_g>0, voter_g/2, 0),ifelse(voter_g>0, voter_g/2, 0), join_g, leaveR_g, leaveB_g)
   if (sum(rates_vec)<=0) next
 
+  #================
   # Apply a random move in Gillespie time
-
   # Gillespie time
+  #================
   dt <- rexp(1, lambda_tot)
   t <- t + dt
   if (t >= t_max) break
 
+  #================
   # Move step
-  # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
-  # 4: Remove internal Red 5: Remove internal Blue
+  #================
+  # 1: Red to Blue. (voter) 
+  # 2: Blue to Red. (voter)
+  # 3: Add external to group
+  # 4: Remove internal Red 
+  # 5: Remove internal Blue
+  
+  #============
+  # Trim rate vec according to the number of moves in simulation
+  # Voter: moves 1 and 2 
+  # Schelling: moves 3 to 5
+  trimmer <- c(rep(input$runVoter, 2), rep(input$runSchelling, 3))
+  if (length(trimmer) == length(rates_vec)) { rates_vec <- rates_vec * trimmer } #next
+  #============
+  
   move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
   if (move==1 && Ri_g>0) { # Red to Blue
@@ -221,15 +239,6 @@ opinion_history <- cbind(opinion_history, opinions)
 frac_mat <- t(frac_mat)
 colnames(frac_mat) <- levels
 
-# reconstruct_bipartite <- function(members, n, m) {
-#   i <- integer(0); j <- integer(0)
-#   for (g in seq_len(m)) {
-#     ids <- members[[g]]
-#     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-#   }
-#   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-# }
-# 
 # if (rig_dirty) {
 #   B <- reconstruct_bipartite(members, n, m)
 #   RIG <- bipartite_to_rig(B)
