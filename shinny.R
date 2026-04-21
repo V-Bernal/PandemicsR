@@ -7,35 +7,64 @@ library(PandemicsR)
 # --- UI ---
 #==========================
 ui <- fluidPage(
-  titlePanel(h2("Voter - Schelling Multi-Membership Simulation")),
   
+  #==========================
+  # Title
+  #==========================
+  titlePanel(h3("Voter - Schelling Multi-Membership Simulation")),
+  
+  
+  #==========================
+  # Side panel
+  #==========================
   sidebarLayout(
     
     sidebarPanel(
+      
+      # Section 1: Parameters
+      h4("Network parameters"),
       numericInput("n", "Number of individuals", value = 15, min = 5),
       numericInput("m", "Number of groups", value = 3, min = 2),
-      numericInput("timesteps", "Iterations", value = 1000),
-
+      numericInput("timesteps", "Gillespie Iterations", value = 1000),
       sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 10),
+      
+      # Section 2: Schelling
+      h4("Schelling's parameters"),
+      checkboxInput("runSchelling", "Schelling model", value = TRUE),
+      
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
-
-      #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
-      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
       sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
       sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
       sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
-
-      #checkboxInput("runVoter", "Voter model", value = TRUE),
-      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 2, value = 2),
-      # 
-      #checkboxInput("runSchelling", "Schelling model", value = TRUE),
-      actionButton("runSim", "Run Simulation"),
+      
+      # Section 3: Voter
+      h4("Voter's parameters"),
+      checkboxInput("runVoter", "Voter model", value = TRUE),
+      
+      #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
+      sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
+      sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 2),
+      
+      # Section 4: Extremes
+      h4("Extremes"),
+      checkboxInput("stubborn_extremes", "Stubbornnes", value = FALSE),
+      checkboxInput("deradicalization", "Deradicalization", value = FALSE),
+      
+      # Section 5: Visualization
+      h4("Visualization"),
       checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
-      checkboxInput("show_rig", "Show final Graph", value = FALSE)
+      checkboxInput("show_rig", "Show final Graph", value = FALSE),
+      
+      # Run
+      actionButton("runSim", "Run Simulation")
       
           ),
-
+    
+    #==========================
+    # Main panel: Visualizations
+    #==========================
     mainPanel(
+      
       tabsetPanel(
         tabPanel("Graphs",
                  plotOutput("rig0Plot", height = "500px"),
@@ -43,6 +72,7 @@ ui <- fluidPage(
                  plotOutput("bipartite0Plot", height = "500px"),
                  plotOutput("bipartitePlot", height = "500px"),
         ),
+        
         tabPanel("Voter dynamics",
                  
                  h3("Overall opinions"),
@@ -76,7 +106,7 @@ server <- function(input, output, session) {
     # 1. User parameters
     #==========================
     n <- input$n; m <- input$m; t_max <- input$timesteps
-    lambda <- input$lambda; kappa <- input$kappa; c_param <- input$c_param
+    lambda <- input$lambda; c_param <- input$c_param
     gamma <- input$gamma; beta_plus <- input$beta_plus; beta_minus <- input$beta_minus
     T_threshold <- input$T_threshold
     num_opinions <- input$Numopinions
@@ -113,12 +143,12 @@ server <- function(input, output, session) {
     for (g in seq_len(m)) {
       ids <- which(bipartite[, g] == 1)
       members[[g]] <- ids
-      red_members[[g]] <- ids[opinions[ids] == -1]
+      red_members[[g]] <- ids[opinions[ids] == -1] # moderates
       blue_members[[g]] <- ids[opinions[ids] == +1]
       outsiders[[g]] <- setdiff(seq_len(n), ids)
       for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
     }
-
+    # moderates
     Ri <- sapply(red_members, length)
     Bi <- sapply(blue_members, length)
     rig_dirty <- FALSE
@@ -126,7 +156,7 @@ server <- function(input, output, session) {
     #----- NEW
     event_counter <- 0
     record_every <- n
-    members0<-members
+    members0 <- members
     
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
@@ -160,7 +190,9 @@ server <- function(input, output, session) {
       lambda_tot <- sum(lambda_i)
       if (lambda_tot <= 0) break
 
-      # Random group selection
+      #====================
+      # Group selection at random
+      #====================
       group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / lambda_tot) else 1
 
       Ri_g <- Ri[group_i]; Bi_g <- Bi[group_i]
@@ -170,16 +202,31 @@ server <- function(input, output, session) {
       rates_vec <- c(ifelse(voter_g>0, voter_g/2, 0), ifelse(voter_g>0, voter_g/2, 0), join_g, leaveR_g, leaveB_g)
       if (sum(rates_vec)<=0) next
 
+      #================
       # Apply a random move in Gillespie time
-
       # Gillespie time
+      #================
       dt <- rexp(1, lambda_tot)
       t <- t + dt
       if (t >= t_max) break
 
+      #================
       # Move step
-      # 1: Red to Blue. 2: Blue to Red. 3: Add external to group.
-      # 4: Remove internal Red 5: Remove internal Blue
+      #================
+      # 1: Red to Blue. (voter) 
+      # 2: Blue to Red. (voter)
+      # 3: Add external to group
+      # 4: Remove internal Red 
+      # 5: Remove internal Blue
+      
+      #============
+      # Trim rate vec according to the number of moves in simulation
+      # Voter: moves 1 and 2 
+      # Schelling: moves 3 to 5 
+      trimmer <- c(rep(input$runVoter, 2), rep(input$runSchelling, 3))
+      if (length(trimmer) == length(rates_vec)) { rates_vec <- rates_vec * trimmer } #next
+      #============
+      
       move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
       if (move==1 && Ri_g>0) { # Red to Blue
@@ -278,15 +325,7 @@ server <- function(input, output, session) {
     opinion_history <- cbind(opinion_history, opinions)
     frac_mat <- t(frac_mat)
     colnames(frac_mat) <- levels
-    # reconstruct_bipartite <- function(members, n, m) {
-    #   i <- integer(0); j <- integer(0)
-    #   for (g in seq_len(m)) {
-    #     ids <- members[[g]]
-    #     if (length(ids)>0) { i <- c(i,ids); j <- c(j, rep.int(g,length(ids))) }
-    #   }
-    #   sparseMatrix(i=i, j=j, x=1L, dims=c(n,m))
-    # }
-    # 
+    
     # if (rig_dirty) {
     #   bipartite <- reconstruct_bipartite(members, n, m)
     #   RIG <- bipartite_to_rig(bipartite)
