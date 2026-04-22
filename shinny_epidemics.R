@@ -55,7 +55,7 @@ ui <- fluidPage(
       # Section 5: Epidemics
       h4("Epidemic's parameters"),
       checkboxInput("runEpidemic", "Epidemic model", value = TRUE),
-      sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 0),
+      sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 1),
       sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
       sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2),
@@ -359,10 +359,8 @@ server <- function(input, output, session) {
 
       social_rate <- sum(lambda_i)
       epi_rate <- infection_rate_tot + recovery_rate_tot
-
-      if (u_event < social_rate / lambda_tot) {
-
-
+      
+      
       #================
       # Apply a random move in Gillespie time
       # Gillespie time
@@ -370,6 +368,8 @@ server <- function(input, output, session) {
       dt <- rexp(1, lambda_tot)
       t <- t + dt
       if (t >= t_max) break
+
+      if (u_event < social_rate / lambda_tot) {
 
       #================
       # Move step
@@ -386,13 +386,35 @@ server <- function(input, output, session) {
 
       #============
       # Trim rate vec according to the number of moves in simulation
-      # Voter: moves 1 and 2
-      # Schelling: moves 3 to 5
-      trimmer <- c(rep(input$runVoter, 2), rep(input$runSchelling, 3), rep(num_opinions == 4, 2), rep(input$Stubborn != T, 2))
-      if (length(trimmer) == length(rates_vec)) { rates_vec <- rates_vec * trimmer } #next
+      enabled_moves <- c()
+      
+      if (isTRUE(input$runVoter)) {
+        enabled_moves <- c(enabled_moves, 1, 2)
+      }
+      
+      if (isTRUE(input$runSchelling)) {
+        enabled_moves <- c(enabled_moves, 3, 4, 5)
+      }
+      
+      if (!is.null(num_opinions) && num_opinions == 4) {
+        enabled_moves <- c(enabled_moves, 6, 7)
+      }
+      
+      if (!isTRUE(input$Stubborn)) {
+        enabled_moves <- c(enabled_moves, 8, 9)
+      }
+      
+      # Filter rates
+      rates_sub <- rates_vec[enabled_moves]
+      
+      # Safety checks
+      if (length(rates_sub) == 0 || sum(rates_sub) <= 0) next
+      
+      move <- sample(enabled_moves, 1L, prob = rates_sub / sum(rates_sub))
+      
       #============
 
-      move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
+      #move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
       if (move==1 && Ri_g>0) { # Red to Blue
         chosen <- sample(red_members[[group_i]],1)
@@ -553,6 +575,8 @@ server <- function(input, output, session) {
             Bi[g] <- Bi[g] + 1
           }
         }
+      }
+      
       } else {
 
         #==========================
@@ -576,7 +600,7 @@ server <- function(input, output, session) {
           epi[i] <- I
 
         } else {
-
+          
           # -------- Recovery event --------
           probs <- recovery_rates / sum(recovery_rates)
           i <- sample(1:n, 1, prob = probs)
@@ -584,8 +608,6 @@ server <- function(input, output, session) {
           epi[i] <- R
         }
       }
-
-}
       # ---- record step ----
       event_counter <- event_counter + 1
 
@@ -748,22 +770,27 @@ server <- function(input, output, session) {
     req(simData())
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df)})
+  
   output$SIR2 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df_opinion_red)})
+  
   output$SIR3 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df_opinion_blue)})
+  
   output$SIR4 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df_grp)})
+  
   output$SIR5 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df_out) })
+  
   # output$SIR6 <- renderPlot({
   #   req(simData())
   #   req(input$runEpidemic)
