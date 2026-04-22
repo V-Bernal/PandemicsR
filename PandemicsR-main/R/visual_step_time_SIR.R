@@ -17,8 +17,10 @@
 #' @export
 visual_step_time_SIR <- function(x){
 
+  # increase top margin
+  op <- par(mar = c(5, 4, 6, 2))  # bottom, left, top, right
+
   plot.new()
-  #par(mar = c(5, 4, 4, 2))  # bottom, left, top, right
   plot.window(xlim = c(1, nrow(x)), ylim = c(0, 1), xaxt = "n", bty='L')  # suppress x-axis)
   axis(1, at = c(1: nrow(x)), labels = (1:nrow(x)))
   axis(2)
@@ -32,16 +34,18 @@ visual_step_time_SIR <- function(x){
           lwd = 2, col = cols[k-1])
   }
 
-  # legend(x = nrow(x)/2 , y = 1.2, col = cols, pch = 20, horiz = TRUE,
-  #        legend=c("S","I","R"), y.intersp = 0.5, bty = "n",
-  #        lty=1, lwd=2)
+  # legend ABOVE plot
+  legend("top",
+         legend = c("S","I","R"),
+         col = cols,
+         lwd = 2,
+         lty = 1,
+         horiz = TRUE,
+         bty = "n",
+         inset = c(0, -0.2),
+         xpd = NA)
 
-  # legend("top",
-  #        legend = c("S","I","R"),lty=1,
-  #        lwd = 2, col = cols, y.intersp = 0.35,
-  #        inset = c(0, -0.15),  # move upward outside the box
-  #        xpd = NA,   # allow drawing outside plot
-  #        horiz = TRUE)         # optional: horizontal layout
-
+  # reset par
+  par(op)
 
 }
