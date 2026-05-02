@@ -25,6 +25,11 @@
 #' @param initial_infected_fraction Initial infected fraction, or a count if
 #'   greater than 1.
 #' @param record_every Number of Gillespie events between recorded snapshots.
+#' @param simulation_mode \code{"auto"}, \code{"exact"}, or \code{"aggregate"}.
+#' @param exact_threshold Maximum \code{n} for exact individual simulation when
+#'   \code{simulation_mode = "auto"}.
+#' @param graph_threshold Maximum \code{n} for graph plotting metadata.
+#' @param aggregate_max_steps Maximum integration steps for aggregate mode.
 #'
 #' @return A list containing graph objects, histories, and epidemic summaries.
 #' @export
@@ -37,10 +42,39 @@ simulate_hybrid_model <- function(
     run_voter = TRUE, run_schelling = TRUE,
     beta_red = 0.5, beta_blue = 0.25, gamma_sir = 0.2,
     initial_infected_fraction = 0.05,
-    record_every = max(1L, as.integer(n))) {
+    record_every = max(1L, as.integer(n)),
+    simulation_mode = c("auto", "exact", "aggregate"),
+    exact_threshold = 500L,
+    graph_threshold = 250L,
+    aggregate_max_steps = 600L) {
 
   if (!(num_opinions %in% c(2L, 4L))) {
     stop("This implementation currently supports 2 or 4 opinion states.")
+  }
+
+  simulation_mode <- match.arg(simulation_mode)
+  if (identical(simulation_mode, "aggregate") || (identical(simulation_mode, "auto") && n > exact_threshold)) {
+    return(simulate_hybrid_aggregate_model(
+      n = n,
+      m = m,
+      t_max = t_max,
+      lambda = lambda,
+      c_param = c_param,
+      gamma_light = gamma_light,
+      gamma_dark = gamma_dark,
+      infected_dark_multiplier = infected_dark_multiplier,
+      beta_plus = beta_plus,
+      beta_minus = beta_minus,
+      T_threshold = T_threshold,
+      num_opinions = num_opinions,
+      run_voter = run_voter,
+      run_schelling = run_schelling,
+      beta_red = beta_red,
+      beta_blue = beta_blue,
+      gamma_sir = gamma_sir,
+      initial_infected_fraction = initial_infected_fraction,
+      max_steps = aggregate_max_steps
+    ))
   }
 
   levels_vec <- get_levels_vec(num_opinions)
@@ -120,6 +154,7 @@ simulate_hybrid_model <- function(
 
   sir_state <- rep.int(1L, n)
   initial_infected_n <- parse_initial_infected(initial_infected_fraction, n)
+  infected_seed <- integer(0L)
   if (initial_infected_n > 0L) {
     infected_seed <- if (initial_infected_n == n) seq_len(n) else sample.int(n, initial_infected_n)
     sir_state[infected_seed] <- 2L
@@ -169,8 +204,33 @@ simulate_hybrid_model <- function(
     )
   }
 
+  sum_camp_sir_counts <- function(current_counts) {
+    camp_counts <- t(vapply(camp_state_indices, function(state_idx) {
+      colSums(current_counts[state_idx, , drop = FALSE])
+    }, numeric(length(compartment_labels))))
+    rownames(camp_counts) <- camp_labels
+    colnames(camp_counts) <- compartment_labels
+    camp_counts
+  }
+
+  seed_camps <- camp_labels[state_camps[match(opinions[infected_seed], levels_vec)]]
+  infection_time_history <- rep(0, length(infected_seed))
+  infection_camp_history <- seed_camps
+
+  record_infection <- function(chosen, current_time) {
+    state_idx <- match(opinions[[chosen]], levels_vec)
+    if (is.na(state_idx)) {
+      return(invisible(FALSE))
+    }
+
+    infection_time_history <<- c(infection_time_history, current_time)
+    infection_camp_history <<- c(infection_camp_history, camp_labels[[state_camps[[state_idx]]]])
+    invisible(TRUE)
+  }
+
   frac_history <- list(sum_state_fraction(opinions))
   sir_history <- list(sum_sir_counts(sir_counts))
+  camp_sir_history <- list(sum_camp_sir_counts(sir_counts))
   time_history <- list(0)
 
   sample_weighted_state <- function(weights) {
@@ -299,6 +359,7 @@ simulate_hybrid_model <- function(
   record_snapshot <- function(current_time) {
     frac_history[[length(frac_history) + 1L]] <<- sum_state_fraction(opinions)
     sir_history[[length(sir_history) + 1L]] <<- sum_sir_counts(sir_counts)
+    camp_sir_history[[length(camp_sir_history) + 1L]] <<- sum_camp_sir_counts(sir_counts)
     time_history[[length(time_history) + 1L]] <<- current_time
   }
 
@@ -439,7 +500,9 @@ simulate_hybrid_model <- function(
         state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
         chosen <- sample_from_compartment_state(1L, state_idx)
         if (!is.na(chosen)) {
-          set_epidemic_state(chosen, 2L)
+          if (isTRUE(set_epidemic_state(chosen, 2L))) {
+            record_infection(chosen, t)
+          }
         }
       }
     } else if (identical(event_type, "infect_blue")) {
@@ -449,7 +512,9 @@ simulate_hybrid_model <- function(
         state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
         chosen <- sample_from_compartment_state(1L, state_idx)
         if (!is.na(chosen)) {
-          set_epidemic_state(chosen, 2L)
+          if (isTRUE(set_epidemic_state(chosen, 2L))) {
+            record_infection(chosen, t)
+          }
         }
       }
     } else if (identical(event_type, "recover")) {
@@ -486,6 +551,11 @@ simulate_hybrid_model <- function(
   colnames(sir_mat) <- compartment_labels
 
   time_history <- unlist(time_history, use.names = FALSE)
+  infection_events <- data.frame(
+    time = infection_time_history,
+    camp = infection_camp_history,
+    stringsAsFactors = FALSE
+  )
 
   if (rig_dirty) {
     bipartite <- reconstruct_bipartite(members, n, m)
@@ -526,6 +596,8 @@ simulate_hybrid_model <- function(
     members = members,
     frac_mat = frac_mat,
     sir_mat = sir_mat,
+    camp_sir_history = camp_sir_history,
+    infection_events = infection_events,
     time_history = time_history,
     sir_state = sir_state,
     final_time = t,
@@ -533,6 +605,8 @@ simulate_hybrid_model <- function(
     camp_labels = camp_labels,
     overall_attack_rate = 1 - sum(sir_state == 1L) / n,
     camp_attack_rate = camp_attack_rate,
-    final_camp_sir = final_camp_sir
+    final_camp_sir = final_camp_sir,
+    simulation_mode = "exact",
+    graph_available = n <= graph_threshold
   )
 }

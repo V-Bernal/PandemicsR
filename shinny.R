@@ -6,6 +6,12 @@ for (r_file in sort(list.files("PandemicsR-main/R", pattern = "\\.R$", full.name
   sys.source(r_file, envir = environment())
 }
 
+max_supported_n <- 200000L
+max_supported_m <- 1000L
+max_supported_t <- 500L
+exact_simulation_node_limit <- 500L
+graph_node_limit <- 250L
+
 resolve_app_password <- function() {
   password <- Sys.getenv("APP_PASSWORD", unset = "")
   if (nzchar(password)) {
@@ -44,11 +50,11 @@ dashboard_ui <- tagList(
   sidebarLayout(
 
     sidebarPanel(
-      numericInput("n", "Number of individuals", value = 30, min = 5),
+      numericInput("n", "Number of individuals", value = 30, min = 5, max = max_supported_n),
       param_help("Total number of individuals in the simulation."),
-      numericInput("m", "Number of groups", value = 3, min = 2),
+      numericInput("m", "Number of groups", value = 3, min = 2, max = max_supported_m),
       param_help("Total number of groups that individuals can join."),
-      numericInput("timesteps", "Iterations", value = 100),
+      numericInput("timesteps", "Iterations", value = 100, min = 1, max = max_supported_t),
       param_help("Maximum Gillespie time horizon for one simulation run."),
 
       sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 0.5),
@@ -111,6 +117,10 @@ dashboard_ui <- tagList(
         tabPanel("Epidemics",
           h3("SIR dynamics"),
           plotOutput("sirPlot", width = "650px", height = "400px"),
+          h3("SIR dynamics by camp"),
+          plotOutput("campSirTimePlot", width = "650px", height = "520px"),
+          h3("Cumulative infections by camp"),
+          plotOutput("infectionPlot", width = "650px", height = "360px"),
           h3("Final attack rate by camp"),
           plotOutput("campAttackPlot", width = "500px", height = "320px"),
           h3("Final SIR counts by camp"),
@@ -206,6 +216,24 @@ server <- function(input, output, session) {
     vapply(required_input_ids, function(id) paste(input[[id]], collapse = ","), character(1))
   })
 
+  validate_scalability_inputs <- function() {
+    n_value <- as.integer(input$n)
+    m_value <- as.integer(input$m)
+    t_value <- as.numeric(input$timesteps)
+
+    if (!is.finite(n_value) || n_value < 5L || n_value > max_supported_n) {
+      stop(sprintf("Number of individuals must be between 5 and %s.", max_supported_n), call. = FALSE)
+    }
+    if (!is.finite(m_value) || m_value < 2L || m_value > max_supported_m || m_value > n_value) {
+      stop(sprintf("Number of groups must be between 2 and %s, and no larger than the number of individuals.", max_supported_m), call. = FALSE)
+    }
+    if (!is.finite(t_value) || t_value < 1 || t_value > max_supported_t) {
+      stop(sprintf("Iterations must be between 1 and %s.", max_supported_t), call. = FALSE)
+    }
+
+    invisible(TRUE)
+  }
+
   output$appShell <- renderUI({
     if (isTRUE(is_authenticated())) {
       dashboard_ui
@@ -249,6 +277,14 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
+  observe({
+    req(inputs_ready())
+    if (input$n > graph_node_limit) {
+      updateCheckboxInput(session, "show_rig0", value = FALSE)
+      updateCheckboxInput(session, "show_rig", value = FALSE)
+    }
+  })
+
   run_current_simulation <- function() {
     if (!inputs_ready()) {
       return(invisible(FALSE))
@@ -256,6 +292,7 @@ server <- function(input, output, session) {
 
     result <- tryCatch(
       withProgress(message = "Running simulation", value = 0.15, {
+        validate_scalability_inputs()
         simulate_hybrid_model(
           n = input$n,
           m = input$m,
@@ -274,7 +311,10 @@ server <- function(input, output, session) {
           beta_red = input$beta_red_epi,
           beta_blue = input$beta_blue_epi,
           gamma_sir = input$gamma_sir,
-          initial_infected_fraction = input$initial_infected_fraction
+          initial_infected_fraction = input$initial_infected_fraction,
+          simulation_mode = "auto",
+          exact_threshold = exact_simulation_node_limit,
+          graph_threshold = graph_node_limit
         )
       }),
       error = function(err) err
@@ -324,6 +364,7 @@ server <- function(input, output, session) {
   output$rig0Plot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
+    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
     req(input$show_rig0)
     
     visual_step_multi(
@@ -336,6 +377,7 @@ server <- function(input, output, session) {
   output$rigPlot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
+    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
     req(input$show_rig)
     
     visual_step_multi(
@@ -348,6 +390,7 @@ server <- function(input, output, session) {
   output$bipartite0Plot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
+    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
     req(input$show_rig0)
 
     visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions)
@@ -356,14 +399,25 @@ server <- function(input, output, session) {
   output$bipartitePlot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
+    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
     req(input$show_rig)
 
     visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions)
   })
 
   output$fracPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, simData()$time_history) })
-  output$histo <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
+  output$histo <- renderPlot({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    if (identical(simData()$simulation_mode, "aggregate")) {
+      visual_opinion_shares(simData()$frac_mat, simData()$num_opinions)
+    } else {
+      visual_histo(simData()$opinion_history, simData()$num_opinions)
+    }
+  })
   output$sirPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_sir_time(simData()$sir_mat, simData()$time_history) })
+  output$campSirTimePlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_sir_camp_time(simData()$camp_sir_history, simData()$time_history) })
+  output$infectionPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_cumulative_infections(simData()$infection_events, simData()$final_time, simData()$camp_labels) })
   output$campAttackPlot <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_epidemic_camps(simData()$final_camp_sir) })
   output$campSirTable <- renderTable({
     req(isTRUE(is_authenticated()))
@@ -373,11 +427,22 @@ server <- function(input, output, session) {
   output$epiSummary <- renderPrint({
     req(isTRUE(is_authenticated()))
     req(simData())
+    cat(sprintf("Simulation mode: %s\n", simData()$simulation_mode))
     cat(sprintf("Overall attack rate: %.2f\n", simData()$overall_attack_rate))
     cat(sprintf("Final recorded simulation time: %.2f\n", simData()$final_time))
   })
-  output$histogramGroup0 <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
-  output$histogramGroup <- renderPlot({ req(isTRUE(is_authenticated())); req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
+  output$histogramGroup0 <- renderPlot({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    validate(need(!identical(simData()$simulation_mode, "aggregate"), "Group histograms are disabled for aggregate runs."))
+    visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0)
+  })
+  output$histogramGroup <- renderPlot({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    validate(need(!identical(simData()$simulation_mode, "aggregate"), "Group histograms are disabled for aggregate runs."))
+    visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members)
+  })
   
 }
 
