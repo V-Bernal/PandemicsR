@@ -28,11 +28,13 @@ visual_cumulative_infections <- function(infection_events, final_time = NULL, ca
   } else {
     rep(1, length(event_times))
   }
-  finite_times <- event_times[is.finite(event_times)]
-  finite_counts <- event_counts[is.finite(event_times) & is.finite(event_counts)]
+  finite_idx <- is.finite(event_times) & is.finite(event_counts)
+  finite_times <- event_times[finite_idx]
 
   x_max <- max(c(1, final_time, finite_times), na.rm = TRUE)
-  y_max <- max(1, sum(finite_counts))
+  y_max <- max(1, vapply(camp_labels, function(camp_label) {
+    sum(event_counts[finite_idx & event_camps == camp_label])
+  }, numeric(1)))
   xlim <- c(0, x_max)
   ylim <- c(0, y_max)
 

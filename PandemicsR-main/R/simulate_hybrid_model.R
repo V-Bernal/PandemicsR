@@ -48,9 +48,29 @@ simulate_hybrid_model <- function(
     graph_threshold = 250L,
     aggregate_max_steps = 600L) {
 
-  if (!(num_opinions %in% c(2L, 4L))) {
-    stop("This implementation currently supports 2 or 4 opinion states.")
-  }
+  params <- validate_hybrid_parameters(
+    n = n,
+    m = m,
+    t_max = t_max,
+    lambda = lambda,
+    c_param = c_param,
+    gamma_light = gamma_light,
+    gamma_dark = gamma_dark,
+    infected_dark_multiplier = infected_dark_multiplier,
+    beta_plus = beta_plus,
+    beta_minus = beta_minus,
+    T_threshold = T_threshold,
+    num_opinions = num_opinions,
+    beta_red = beta_red,
+    beta_blue = beta_blue,
+    gamma_sir = gamma_sir,
+    initial_infected_fraction = initial_infected_fraction
+  )
+  list2env(params, environment())
+  record_every <- max(1L, as.integer(round(record_every)))
+  exact_threshold <- max(1L, as.integer(round(exact_threshold)))
+  graph_threshold <- max(1L, as.integer(round(graph_threshold)))
+  aggregate_max_steps <- max(1L, as.integer(round(aggregate_max_steps)))
 
   simulation_mode <- match.arg(simulation_mode)
   if (identical(simulation_mode, "aggregate") || (identical(simulation_mode, "auto") && n > exact_threshold)) {
@@ -440,6 +460,7 @@ simulate_hybrid_model <- function(
     dt <- rexp(1, lambda_tot)
     t <- t + dt
     if (t >= t_max) {
+      t <- t_max
       break
     }
 
@@ -607,6 +628,9 @@ simulate_hybrid_model <- function(
     camp_attack_rate = camp_attack_rate,
     final_camp_sir = final_camp_sir,
     simulation_mode = "exact",
-    graph_available = n <= graph_threshold
+    graph_available = n <= graph_threshold,
+    population_size = n,
+    group_count = m,
+    model_notes = "Exact individual/network simulation."
   )
 }

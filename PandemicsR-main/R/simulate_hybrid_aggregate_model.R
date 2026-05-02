@@ -20,9 +20,26 @@ simulate_hybrid_aggregate_model <- function(
     initial_infected_fraction = 0.05,
     max_steps = 600L) {
 
-  if (!(num_opinions %in% c(2L, 4L))) {
-    stop("This implementation currently supports 2 or 4 opinion states.")
-  }
+  params <- validate_hybrid_parameters(
+    n = n,
+    m = m,
+    t_max = t_max,
+    lambda = lambda,
+    c_param = c_param,
+    gamma_light = gamma_light,
+    gamma_dark = gamma_dark,
+    infected_dark_multiplier = infected_dark_multiplier,
+    beta_plus = beta_plus,
+    beta_minus = beta_minus,
+    T_threshold = T_threshold,
+    num_opinions = num_opinions,
+    beta_red = beta_red,
+    beta_blue = beta_blue,
+    gamma_sir = gamma_sir,
+    initial_infected_fraction = initial_infected_fraction
+  )
+  list2env(params, environment())
+  max_steps <- max(1L, as.integer(round(max_steps)))
 
   levels_vec <- get_levels_vec(num_opinions)
   state_labels <- get_state_labels(num_opinions)
@@ -94,7 +111,6 @@ simulate_hybrid_aggregate_model <- function(
     camp_counts
   }
 
-  t_max <- max(0, as.numeric(t_max))
   n_steps <- if (t_max <= 0) 0L else min(max_steps, max(1L, ceiling(t_max / 0.25)))
   dt <- if (n_steps > 0L) t_max / n_steps else 0
 
@@ -116,6 +132,13 @@ simulate_hybrid_aggregate_model <- function(
     frac_history[[idx]] <<- sum_state_fraction(sir_counts)
     sir_history[[idx]] <<- sum_sir_counts(sir_counts)
     camp_sir_history[[idx]] <<- sum_camp_sir_counts(sir_counts)
+  }
+
+  normalize_population <- function() {
+    total_count <- sum(sir_counts)
+    if (is.finite(total_count) && total_count > 0 && abs(total_count - n) > 1e-7) {
+      sir_counts <<- sir_counts * (n / total_count)
+    }
   }
 
   record_snapshot(1L)
@@ -164,6 +187,7 @@ simulate_hybrid_aggregate_model <- function(
 
       sir_counts <- sir_counts + delta
       sir_counts[sir_counts < 0] <- 0
+      normalize_population()
     }
 
     infected_total <- sum(sir_counts[, "I"])
@@ -185,6 +209,7 @@ simulate_hybrid_aggregate_model <- function(
     recoveries <- pmin(sir_counts[, "I"], dt * gamma_sir * sir_counts[, "I"])
     sir_counts[, "I"] <- sir_counts[, "I"] - recoveries
     sir_counts[, "R"] <- sir_counts[, "R"] + recoveries
+    normalize_population()
 
     if (any(new_infections_by_camp > 0)) {
       infection_events <- rbind(
@@ -235,6 +260,9 @@ simulate_hybrid_aggregate_model <- function(
     camp_attack_rate = camp_attack_rate,
     final_camp_sir = final_camp_sir,
     simulation_mode = "aggregate",
-    graph_available = FALSE
+    graph_available = FALSE,
+    population_size = n,
+    group_count = m,
+    model_notes = "Fast aggregate approximation for large populations; individual network rewiring and group histograms are not materialized."
   )
 }

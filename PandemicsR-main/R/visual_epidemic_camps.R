@@ -13,6 +13,9 @@ visual_epidemic_camps <- function(final_camp_sir) {
   if (is.null(rownames(final_camp_sir))) {
     rownames(final_camp_sir) <- get_camp_labels()
   }
+  if (!("S" %in% colnames(final_camp_sir))) {
+    stop("final_camp_sir must contain an S column.")
+  }
 
   camp_sizes <- rowSums(final_camp_sir)
   attack_rate <- ifelse(camp_sizes > 0, 1 - final_camp_sir[, "S"] / camp_sizes, NA_real_)
@@ -43,5 +46,4 @@ visual_epidemic_camps <- function(final_camp_sir) {
     las = 1
   )
   text(bp, pmax(plot_values, 0.02), labels = text_labels, pos = 3, cex = 0.9)
-  mtext("Labels include final camp size. Empty camps are shown explicitly.", side = 1, line = 4.3, cex = 0.85, col = "gray35")
 }

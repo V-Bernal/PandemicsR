@@ -45,7 +45,10 @@ param_help <- function(text) {
 # --- UI ---
 #==========================
 dashboard_ui <- tagList(
-  titlePanel(h2("Voter - Schelling - Epidemic Multi-Membership Simulation")),
+  titlePanel(
+    "Voter - Schelling - Epidemic Multi-Membership Simulation",
+    windowTitle = "PandemicsR Sandbox"
+  ),
 
   sidebarLayout(
 
@@ -364,8 +367,8 @@ server <- function(input, output, session) {
   output$rig0Plot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
-    req(input$show_rig0)
+    req(input$show_rig0, cancelOutput = TRUE)
+    req(isTRUE(simData()$graph_available), cancelOutput = TRUE)
     
     visual_step_multi(
       simData()$RIG0,
@@ -377,8 +380,8 @@ server <- function(input, output, session) {
   output$rigPlot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
-    req(input$show_rig)
+    req(input$show_rig, cancelOutput = TRUE)
+    req(isTRUE(simData()$graph_available), cancelOutput = TRUE)
     
     visual_step_multi(
       simData()$RIG,
@@ -390,8 +393,8 @@ server <- function(input, output, session) {
   output$bipartite0Plot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
-    req(input$show_rig0)
+    req(input$show_rig0, cancelOutput = TRUE)
+    req(isTRUE(simData()$graph_available), cancelOutput = TRUE)
 
     visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions)
   })
@@ -399,8 +402,8 @@ server <- function(input, output, session) {
   output$bipartitePlot <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(isTRUE(simData()$graph_available), "Network plots are disabled for this run size."))
-    req(input$show_rig)
+    req(input$show_rig, cancelOutput = TRUE)
+    req(isTRUE(simData()$graph_available), cancelOutput = TRUE)
 
     visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions)
   })
@@ -422,12 +425,13 @@ server <- function(input, output, session) {
   output$campSirTable <- renderTable({
     req(isTRUE(is_authenticated()))
     req(simData())
-    round(as.data.frame(simData()$final_camp_sir), 3)
+    as.data.frame(round(simData()$final_camp_sir, if (identical(simData()$simulation_mode, "aggregate")) 1L else 0L))
   }, rownames = TRUE)
   output$epiSummary <- renderPrint({
     req(isTRUE(is_authenticated()))
     req(simData())
     cat(sprintf("Simulation mode: %s\n", simData()$simulation_mode))
+    cat(sprintf("Mode note: %s\n", simData()$model_notes))
     cat(sprintf("Overall attack rate: %.2f\n", simData()$overall_attack_rate))
     cat(sprintf("Red camp attack rate: %.2f\n", simData()$camp_attack_rate[["Red camp"]]))
     cat(sprintf("Blue camp attack rate: %.2f\n", simData()$camp_attack_rate[["Blue camp"]]))
@@ -436,13 +440,13 @@ server <- function(input, output, session) {
   output$histogramGroup0 <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(!identical(simData()$simulation_mode, "aggregate"), "Group histograms are disabled for aggregate runs."))
+    req(!identical(simData()$simulation_mode, "aggregate"), cancelOutput = TRUE)
     visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0)
   })
   output$histogramGroup <- renderPlot({
     req(isTRUE(is_authenticated()))
     req(simData())
-    validate(need(!identical(simData()$simulation_mode, "aggregate"), "Group histograms are disabled for aggregate runs."))
+    req(!identical(simData()$simulation_mode, "aggregate"), cancelOutput = TRUE)
     visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members)
   })
   
