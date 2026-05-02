@@ -163,7 +163,9 @@ local({
   source("app.R", local = app_env)
   assert(exists("app", envir = app_env), "app.R did not create a Shiny app object.")
   if (requireNamespace("htmltools", quietly = TRUE)) {
+    rendered_shell <- htmltools::renderTags(app_env$ui)
     rendered_dashboard <- htmltools::renderTags(app_env$dashboard_ui)
+    assert(grepl("<title>PandemicsR Sandbox</title>", rendered_shell$head, fixed = TRUE), "Outer page browser title was not set cleanly.")
     assert(grepl("<title>PandemicsR Sandbox</title>", rendered_dashboard$head, fixed = TRUE), "Browser title was not set cleanly.")
     assert(!grepl("<title>.*h2", rendered_dashboard$head), "Browser title appears to contain an h2 tag.")
   }

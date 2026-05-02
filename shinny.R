@@ -143,6 +143,7 @@ dashboard_ui <- tagList(
 )
 
 ui <- fluidPage(
+  title = "PandemicsR Sandbox",
   tags$head(
     tags$style(HTML("
       .password-gate-wrap {
