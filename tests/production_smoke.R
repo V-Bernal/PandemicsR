@@ -86,8 +86,8 @@ local({
     beta_minus = 0.2,
     T_threshold = 0.3,
     num_opinions = 4,
-    beta_red = 1.1,
-    beta_blue = 0.18,
+    beta_red = 1.6,
+    beta_blue = 0.05,
     gamma_sir = 0.30,
     initial_infected_fraction = 0.05
   )
@@ -108,8 +108,9 @@ local({
   assert(aggregate_timing[["elapsed"]] < 20, "Aggregate 200k run exceeded 20 seconds.")
   render_core_plots(aggregate_result)
 
-  default_result <- do.call(simulate_hybrid_model, with_args(n = 3000))
-  assert_result_integrity(default_result, "aggregate")
+  default_result <- do.call(simulate_hybrid_model, with_args(n = 120))
+  assert_result_integrity(default_result, "exact")
+  assert(isTRUE(default_result$graph_available), "Default run should keep graph outputs available.")
   assert(default_result$camp_attack_rate[["Red camp"]] > default_result$camp_attack_rate[["Blue camp"]], "Default parameters should make the red camp sicker.")
 
   no_epidemic_result <- simulate_hybrid_model(

@@ -53,7 +53,7 @@ dashboard_ui <- tagList(
   sidebarLayout(
 
     sidebarPanel(
-      numericInput("n", "Number of individuals", value = 3000, min = 5, max = max_supported_n),
+      numericInput("n", "Number of individuals", value = 120, min = 5, max = max_supported_n),
       param_help("Total number of individuals in the simulation."),
       numericInput("m", "Number of groups", value = 3, min = 2, max = max_supported_m),
       param_help("Total number of groups that individuals can join."),
@@ -81,9 +81,9 @@ dashboard_ui <- tagList(
 
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
       param_help("Choose either the legacy 2-state mode or the ordered 4-state mode."),
-      sliderInput("beta_red_epi", "Epidemic: infection rate red camp", min = 0, step = 0.01, max = 2, value = 1.1),
+      sliderInput("beta_red_epi", "Epidemic: infection rate red camp", min = 0, step = 0.01, max = 2, value = 1.6),
       param_help("Dark red and light red share this infection rate in the random-mixing SIR process."),
-      sliderInput("beta_blue_epi", "Epidemic: infection rate blue camp", min = 0, step = 0.01, max = 2, value = 0.18),
+      sliderInput("beta_blue_epi", "Epidemic: infection rate blue camp", min = 0, step = 0.01, max = 2, value = 0.05),
       param_help("Dark blue and light blue share this infection rate."),
       sliderInput("gamma_sir", "Epidemic: recovery rate", min = 0, step = 0.01, max = 2, value = 0.30),
       param_help("Common recovery rate for infected individuals."),
@@ -96,15 +96,16 @@ dashboard_ui <- tagList(
       param_help("Turns group joining and leaving dynamics on or off."),
       actionButton("runSim", "Run Simulation"),
       uiOutput("runStatus"),
-      checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
+      checkboxInput("show_rig0", "Show initial Graph", value = TRUE),
       param_help("Displays the initial RIG and bipartite graph for small runs."),
-      checkboxInput("show_rig", "Show final Graph", value = FALSE),
+      checkboxInput("show_rig", "Show final Graph", value = TRUE),
       param_help("Displays the final RIG and bipartite graph for small runs.")
     ),
 
     mainPanel(
       tabsetPanel(
         tabPanel("Graphs",
+          uiOutput("graphNotice"),
           plotOutput("rig0Plot", height = "500px"),
           plotOutput("rigPlot", height = "500px"),
           plotOutput("bipartite0Plot", height = "500px"),
@@ -186,6 +187,20 @@ ui <- fluidPage(
       }
       .run-status-info {
         color: #5b6879;
+      }
+      .graph-notice {
+        max-width: 680px;
+        margin: 12px 0 20px 0;
+        padding: 14px 16px;
+        border-left: 4px solid #6b7280;
+        background: #f6f8fa;
+        color: #374151;
+      }
+      .graph-notice h4 {
+        margin-top: 0;
+      }
+      .graph-notice p {
+        margin-bottom: 6px;
       }
     "))
   ),
@@ -364,6 +379,24 @@ server <- function(input, output, session) {
   #==========================
   # --- Output ---
   #==========================
+
+  output$graphNotice <- renderUI({
+    req(isTRUE(is_authenticated()))
+    req(simData())
+    if (isTRUE(simData()$graph_available)) {
+      return(NULL)
+    }
+
+    tags$div(
+      class = "graph-notice",
+      tags$h4("Network visualizations are disabled for this run size"),
+      tags$p(sprintf(
+        "No network graph is produced when n is larger than %s. Large runs use the fast aggregate simulator so the app stays responsive.",
+        graph_node_limit
+      )),
+      tags$p("Lower the number of individuals to 250 or fewer and press Run Simulation to show the RIG and bipartite graphs.")
+    )
+  })
   
   output$rig0Plot <- renderPlot({
     req(isTRUE(is_authenticated()))
