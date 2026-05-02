@@ -22,7 +22,11 @@ visual_epidemic_camps <- function(final_camp_sir) {
     "No members",
     sprintf("%.2f", attack_rate)
   )
-  label_names <- sprintf("%s\nn=%d", rownames(final_camp_sir), camp_sizes)
+  label_names <- sprintf(
+    "%s\nn=%s",
+    rownames(final_camp_sir),
+    format(round(camp_sizes), big.mark = ",", trim = TRUE)
+  )
   bar_cols <- ifelse(camp_sizes > 0, c("#b22222", "#1f77b4")[seq_len(nrow(final_camp_sir))], "#d9d9d9")
 
   old_par <- par(no.readonly = TRUE)
