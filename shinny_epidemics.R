@@ -11,7 +11,7 @@ ui <- fluidPage(
   #==========================
   # Title
   #==========================
-  titlePanel(h3("Voter - Schelling Multi-Membership Simulation")),
+  titlePanel(h3("Voter - Schelling Multi-Membership with Epidemics Simulation")),
 
 
   #==========================
@@ -20,54 +20,61 @@ ui <- fluidPage(
   sidebarLayout(
 
     sidebarPanel(
-
+      
       # Section 1: Parameters
+      wellPanel(
       h4("Network parameters"),
       numericInput("n", "Number of individuals", value = 15, min = 5),
       numericInput("m", "Number of groups", value = 3, min = 2),
       numericInput("timesteps", "Gillespie Iterations", value = 1000),
-      sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 10),
-
+      numericInput("lambda", "RIG weight parameter lambda", value = 1, min = 0)
+      ),
+      
       # Section 2: Schelling
-      h4("Schelling's parameters"),
+      wellPanel(
+      h4("Schelling model"),
       checkboxInput("runSchelling", "Schelling model", value = TRUE),
 
       sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
       sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
       sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
-      sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3),
-
+      sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3)
+      ),
+      
       # Section 3: Voter
-      h4("Voter's parameters"),
+      wellPanel(
+      h4("Voter's model"),
       checkboxInput("runVoter", "Voter model", value = TRUE),
-
       #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
       sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 2),
 
       # Section 4: Extremes
-      h4("Extremes"),
-      checkboxInput("runStubborn", "Stubborn", value = TRUE),
+      #h5("Extremes"),
       sliderInput("alpha", "radicalization rate", min = 0, step = 0.01, max = 1, value = 0),
-      sliderInput("alpha_deradicalization", "deradicalization rate", min = 0, step = 0.01, max = 1, value = 0),
-
+      sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.01, max = 1, value = 0),
+      h6("*Stubbornnes: set deradicalization to zero")
+      ),
 
       # Section 5: Epidemics
-      h4("Epidemic's parameters"),
+      wellPanel(
+      h4("Epidemics model"),
       checkboxInput("runEpidemic", "Epidemic model", value = TRUE),
       sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 1),
       sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
-      sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2),
-
+      sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
+      ),
+      
       # Section 6: Visualization
+      wellPanel(
       h4("Visualization"),
       checkboxInput("show_rig0", "Show initial Graph", value = FALSE),
-      checkboxInput("show_rig", "Show final Graph", value = FALSE),
-
+      checkboxInput("show_rig", "Show final Graph", value = FALSE)
+      ),
+      
       # Run
       actionButton("runSim", "Run Simulation")
-
     ),
 
     #==========================
@@ -77,49 +84,75 @@ ui <- fluidPage(
 
       tabsetPanel(
         tabPanel("Graphs",
-
-                 plotOutput("rig0Plot", height = "500px"),
-                 plotOutput("rigPlot", height = "500px"),
-
+                 
+                 h4("Stopping condition"),
+                 textOutput("stopReason"),
+                 
+                 fluidRow(
+                   column(6,
+                          h4("Initial RIG"),
+                          plotOutput("rig0Plot", height = "400px")
+                   ),
+                   column(6,
+                          h4("Final RIG"),
+                          plotOutput("rigPlot", height = "400px")
+                   )
+                 ),
+                 
                  h4("Bipartite graph"),
-                 plotOutput("bipartite0Plot", height = "500px"),
-                 plotOutput("bipartitePlot", height = "500px"),
+                 p("Connections between individuals and groups."),
+                 
+                 fluidRow(
+                   column(6,
+                          h4("Initial bipartite"),
+                          plotOutput("bipartite0Plot", height = "400px")
+                   ),
+                   column(6,
+                          h4("Final bipartite"),
+                          plotOutput("bipartitePlot", height = "400px")
+                   )
+                 )
         ),
 
         tabPanel("Voter's dynamics",
-
                  h4("Time evolution of opinions"),
+                 p("Fraction of individuals holding each opinion state over time."),
                  plotOutput("fracPlot", width = "500px", height = "400px"),
-                 #plotOutput("heatmapPlot", height = "350px")
-
+                 
                  h4("Overall opinions"),
+                 p("Distribution of opinions across the entire population."),
                  plotOutput("histo"),
-
+                 
                  h4("Group-wise initial opinions"),
+                 p("Opinion distribution within each group at the start."),
                  plotOutput("histogramGroup0"),
-
+                 
                  h4("Group-wise final opinions"),
+                 p("Opinion distribution within each group at the end of the simulation."),
                  plotOutput("histogramGroup")
         ),
         tabPanel("Epidemic's dynamics",
 
+                 
                  h4("SIR overall"),
+                 p("Total population fractions in Susceptible (S), Infected (I), and Recovered (R) over time."),
                  plotOutput("SIR1"),
-
+                 
                  h4("SIR red opinion"),
+                 p("SIR dynamics restricted to individuals currently in the red opinion camp."),
                  plotOutput("SIR2"),
-
+                 
                  h4("SIR blue opinion"),
+                 p("SIR dynamics restricted to individuals currently in the blue opinion camp."),
                  plotOutput("SIR3"),
-
+                 
                  h4("SIR members"),
+                 p("SIR dynamics for individuals belonging to at least one group."),
                  plotOutput("SIR4"),
-
+                 
                  h4("SIR isolated"),
-                 plotOutput("SIR5")#,
-#
-#                  h4("SIR cummulative infections"),
-#                  plotOutput("SIR6")
+                 p("SIR dynamics for individuals not belonging to any group."),
+                 plotOutput("SIR5")
                         )
       )
     )
@@ -245,13 +278,29 @@ server <- function(input, output, session) {
     #--time of infection----------
     inf_time <- c()
     inf_camp <- c()
+    
+    # stopping time
+    stop_reason <- "Reached maximum time"
+    
 
     #==========================
     # Combined Voter and Schelling model dynamics Gillespie algorithm
     #==========================
     t <- 0
     while (t < t_max) {
-
+      
+      # stopping time
+      if (all(epi == R)) {
+        stop_reason <- "All individuals recovered (epidemic ended)"
+        break
+      }
+      
+      if (num_opinions == 4 && all(opinions %in% c(-2, 2))) {
+        stop_reason <- "Full polarization (all extreme opinions)"
+        break
+      }
+      
+      
       # The rate of interaction
       Tot <- Ri + Bi
       #voter_term <- gamma * (Ri * Bi/ Tot) # Contact rate ind vd ind: gamma*k
@@ -711,14 +760,23 @@ server <- function(input, output, session) {
       SIR_df = SIR_df ,SIR_df_opinion_red = SIR_df_opinion_red,
       SIR_df_opinion_blue = SIR_df_opinion_blue,
       SIR_df_grp=SIR_df_grp, SIR_df_out = SIR_df_out,
-      inf_time = inf_time, inf_camp = inf_camp
+      inf_time = inf_time, inf_camp = inf_camp,
+      
+      stop_reason=stop_reason, final_time = t
     )
   })
 
   #==========================
   # Section 6: Visualization
   #==========================
-
+  
+  # Stopping reason
+  output$stopReason <- renderText({
+    req(simData())
+    paste("Simulation stopped:", simData()$stop_reason,
+          "| Final time:", round(simData()$final_time, 2))
+  })
+  
   #---------------
   # comment
   #output$rig0Plot <- renderPlot({ req(simData()) ; visual_step_multi(simData()$RIG0, simData()$opinion_history[,1], simData()$num_opinions) })
