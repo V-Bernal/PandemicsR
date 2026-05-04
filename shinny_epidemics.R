@@ -87,6 +87,7 @@ ui <- fluidPage(
                  
                  h4("Stopping condition"),
                  textOutput("stopReason"),
+                 textOutput("compTime"),
                  
                  fluidRow(
                    column(6,
@@ -165,6 +166,9 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   simData <- eventReactive(input$runSim, {
+    
+    # real time
+    start_time <- Sys.time()
 
     #==========================
     # 1. User parameters
@@ -637,9 +641,20 @@ server <- function(input, output, session) {
         # Decide infection vs recovery
         if (runif(1) < infection_rate_tot / (infection_rate_tot + recovery_rate_tot)) {
 
-          # -------- Infection event --------
-          probs <- infection_rates / sum(infection_rates)
-          i <- sample(1:n, 1, prob = probs)
+          # # -------- Infection event --------
+          # probs <- infection_rates / sum(infection_rates)
+          # i <- sample(1:n, 1, prob = probs)
+          
+          #=======================
+          inf_alias <- build_alias(infection_rates / sum(infection_rates))
+          rec_alias <- build_alias(recovery_rates / sum(recovery_rates))
+          
+          if (runif(1) < infection_rate_tot / (infection_rate_tot + recovery_rate_tot)) {
+            i <- alias_sample(inf_alias)
+          } else {
+            i <- alias_sample(rec_alias)
+          }
+          #========================
 
           # opinion at time of infection
           camp_i <- ifelse(opinions[i] < 0, "red", "blue")
@@ -746,6 +761,9 @@ server <- function(input, output, session) {
                              S_hist_out/n,
                              I_hist_out/n,
                              R_hist_out/n)
+    
+    end_time <- Sys.time()
+    comp_time <- end_time - start_time
 
     # Output
     list(
@@ -762,7 +780,7 @@ server <- function(input, output, session) {
       SIR_df_grp=SIR_df_grp, SIR_df_out = SIR_df_out,
       inf_time = inf_time, inf_camp = inf_camp,
       
-      stop_reason=stop_reason, final_time = t
+      stop_reason = stop_reason, final_time = t, comp_time = comp_time
     )
   })
 
@@ -774,8 +792,16 @@ server <- function(input, output, session) {
   output$stopReason <- renderText({
     req(simData())
     paste("Simulation stopped:", simData()$stop_reason,
-          "| Final time:", round(simData()$final_time, 2))
+          "| Final Gillespie time:", round(simData()$final_time, 2))
   })
+  
+  output$compTime <- renderText({
+    req(simData())
+    paste0("Computation time: ",
+           round(simData()$comp_time, 3),
+           " seconds")
+  })
+  
   
   #---------------
   # comment
