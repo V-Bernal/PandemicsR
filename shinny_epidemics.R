@@ -229,8 +229,8 @@ server <- function(input, output, session) {
       ids <- which(bipartite[, g] == 1)
       members[[g]] <- ids
       #opinion in group
-      red_members[[g]] <- ids[opinions[ids] == -1] # moderates
-      blue_members[[g]] <- ids[opinions[ids] == +1]
+      red_members[[g]] <- ids[opinions[ids] < 0] 
+      blue_members[[g]] <- ids[opinions[ids] > 0 ]
       outsiders[[g]] <- setdiff(seq_len(n), ids)
       for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
     }
@@ -617,7 +617,7 @@ server <- function(input, output, session) {
 
         members[[group_i]] <- c(members[[group_i]], chosen)
         groups_of_individual[[chosen]] <- c(groups_of_individual[[chosen]], group_i)
-        if (opinions[chosen]==-1) {
+        if (opinions[chosen]< 0) {
           red_members[[group_i]] <- c(red_members[[group_i]], chosen)
           Ri[group_i] <- Ri[group_i]+1
         } else {
