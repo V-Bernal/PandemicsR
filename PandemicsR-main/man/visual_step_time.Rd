@@ -4,7 +4,7 @@
 \alias{visual_step_time}
 \title{visual_step_time}
 \usage{
-visual_step_time(frac_mat, num_opinions, n)
+visual_step_time(frac_mat, num_opinions)
 }
 \arguments{
 \item{frac_mat}{fraction of opinions}
