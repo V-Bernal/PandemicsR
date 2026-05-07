@@ -60,7 +60,7 @@ ui <- fluidPage(
       wellPanel(
       h4("Epidemics model"),
       checkboxInput("runEpidemic", "Epidemic model", value = TRUE),
-      sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 1),
+      sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 5),
       sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
       sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
       sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
@@ -243,46 +243,141 @@ server <- function(input, output, session) {
     event_counter <- 0
     record_every <- n
     members0 <- members
-
+    
     #=====================
-    # Initialize epidemic
+    # Initialize epidemic (O(1) structure)
+    #=====================
+    
     epi <- rep(S, n)
-    epi[sample(1:n, I0)] <- I
-
-    # Tracking Epidemics
+    initial_infected <- sample.int(n, I0)
+    epi[initial_infected] <- I
+    
+    # Maintain explicit sets
+    S_nodes <- setdiff(seq_len(n), initial_infected)
+    I_nodes <- initial_infected
+    
+    S_count <- length(S_nodes)
+    I_count <- length(I_nodes)
+    R_count <- 0
+    
+    # Positions for O(1) removal
+    pos_in_S <- integer(n)
+    pos_in_I <- integer(n)
+    
+    for (k in seq_along(S_nodes)) pos_in_S[S_nodes[k]] <- k
+    for (k in seq_along(I_nodes)) pos_in_I[I_nodes[k]] <- k
+    
+    # Global counters (O(1))
+    I_count <- length(I_nodes)
+    
+    # # Camp-based infected counters
+    # I_red  <- sum(opinions[I_nodes] < 0)
+    # I_blue <- sum(opinions[I_nodes] > 0)
+    # 
+    # R_red <- 0
+    # R_blue <- 0
+    #=====================
+    # Initialize epidemic history trackers
+    #=====================
+    
+    # Initial time
     time_hist <- c(0)
-    S_hist <- c(sum(epi==S))
-    I_hist <- c(sum(epi==I))
-    R_hist <- c(sum(epi==R))
-
-    camp <- ifelse(opinions < 0, "red", "blue")
-    S_hist_red <- c(sum(epi[camp=="red"]  == S))
-    I_hist_red  <- c(sum(epi[camp=="red"]  == I))
-    R_hist_red  <- c(sum(epi[camp=="red"]  == R))
-
-    S_hist_blue <- c(sum(epi[camp=="blue"] == S))
-    I_hist_blue  <- c(sum(epi[camp=="blue"] == I))
-    R_hist_blue  <- c(sum(epi[camp=="blue"] == R))
-
-    # SIR by group membership (aggregate)
-    # Flatten all members (unique individuals in any group)
+    
+    # Overall SIR counts
+    S_hist <- c(S_count)
+    I_hist <- c(I_count)
+    R_hist <- c(R_count)
+    
+    #=====================
+    # Opinion camp SIR
+    #=====================
+    
+    # Initial recovered counts
+    R_red  <- 0
+    R_blue <- 0
+    
+    # Initial infected counts
+    I_red  <- sum(opinions[I_nodes] < 0)
+    I_blue <- sum(opinions[I_nodes] > 0)
+    
+    # Initial susceptible counts
+    S_red  <- sum(opinions < 0) - I_red
+    S_blue <- sum(opinions > 0) - I_blue
+    
+    # Store history
+    S_hist_red  <- c(S_red)
+    I_hist_red  <- c(I_red)
+    R_hist_red  <- c(R_red)
+    
+    S_hist_blue <- c(S_blue)
+    I_hist_blue <- c(I_blue)
+    R_hist_blue <- c(R_blue)
+    
+    #=====================
+    # Group membership SIR
+    #=====================
+    
     all_group_members <- unique(unlist(members))
-
-    S_hist_grp <- sum(epi[all_group_members] == S)
-    I_hist_grp <- sum(epi[all_group_members] == I)
-    R_hist_grp <- sum(epi[all_group_members] == R)
-
+    
+    S_hist_grp <- c(sum(epi[all_group_members] == S))
+    I_hist_grp <- c(sum(epi[all_group_members] == I))
+    R_hist_grp <- c(sum(epi[all_group_members] == R))
+    
     # Outsiders
-    outsiders_all <- setdiff(1:length(epi), all_group_members)
-
-    S_hist_out <- sum(epi[outsiders_all] == S)
-    I_hist_out <- sum(epi[outsiders_all] == I)
-    R_hist_out <- sum(epi[outsiders_all] == R)
+    outsiders_all <- setdiff(seq_len(n), all_group_members)
+    
+    S_hist_out <- c(sum(epi[outsiders_all] == S))
+    I_hist_out <- c(sum(epi[outsiders_all] == I))
+    R_hist_out <- c(sum(epi[outsiders_all] == R))
+    # #=====================
+    # # Initialize epidemic
+    # epi <- rep(S, n)
+    # epi[sample(1:n, I0)] <- I
+    # 
+    # # Tracking Epidemics
+    # time_hist <- c(0)
+    # S_hist <- c(sum(epi==S))
+    # I_hist <- c(sum(epi==I))
+    # R_hist <- c(sum(epi==R))
+    # 
+    # camp <- ifelse(opinions < 0, "red", "blue")
+    # S_hist_red <- c(sum(epi[camp=="red"]  == S))
+    # I_hist_red  <- c(sum(epi[camp=="red"]  == I))
+    # R_hist_red  <- c(sum(epi[camp=="red"]  == R))
+    # 
+    # S_hist_blue <- c(sum(epi[camp=="blue"] == S))
+    # I_hist_blue  <- c(sum(epi[camp=="blue"] == I))
+    # R_hist_blue  <- c(sum(epi[camp=="blue"] == R))
+    # 
+    # # SIR by group membership (aggregate)
+    # # Flatten all members (unique individuals in any group)
+    # all_group_members <- unique(unlist(members))
+    # 
+    # S_hist_grp <- sum(epi[all_group_members] == S)
+    # I_hist_grp <- sum(epi[all_group_members] == I)
+    # R_hist_grp <- sum(epi[all_group_members] == R)
+    # 
+    # # Outsiders
+    # outsiders_all <- setdiff(1:length(epi), all_group_members)
+    # 
+    # S_hist_out <- sum(epi[outsiders_all] == S)
+    # I_hist_out <- sum(epi[outsiders_all] == I)
+    # R_hist_out <- sum(epi[outsiders_all] == R)
 
     #--time of infection----------
     inf_time <- c()
     inf_camp <- c()
     
+    # # ---- ADD THIS ----
+    # time_hist <- c()
+    # S_hist <- c()
+    # I_hist <- c()
+    # R_hist <- c()
+    # 
+    # S_hist_red <- c(); I_hist_red <- c(); R_hist_red <- c()
+    # S_hist_blue <- c(); I_hist_blue <- c(); R_hist_blue <- c()
+    # S_hist_grp <- c(); I_hist_grp <- c(); R_hist_grp <- c()
+    # S_hist_out <- c(); I_hist_out <- c(); R_hist_out <- c()
     # stopping time
     stop_reason <- "Reached maximum time"
     
@@ -329,22 +424,23 @@ server <- function(input, output, session) {
       #==========================
       # Epidemic rates (NEW)
       #==========================
-      I_count <- sum(epi == I)
+      #I_count <- sum(epi == I)
       prevalence <- I_count / n # global = random mixing
 
       # Opinion camp-based infection rates
       beta_vec <- ifelse(opinions < 0, beta_red, beta_blue)
 
       # Infection: only for S individuals
-      infection_rates <- ifelse(epi == S, beta_vec * prevalence, 0)
+      ##infection_rates <- ifelse(epi == S, beta_vec * prevalence, 0)
 
       # Recovery: only for I individuals
-      recovery_rates <- ifelse(epi == I, gamma_epi, 0)
+      ##recovery_rates <- ifelse(epi == I, gamma_epi, 0)
 
       # Aggregate epidemic rates
-      infection_rate_tot <- sum(infection_rates)
-      recovery_rate_tot  <- sum(recovery_rates)
-
+      #infection_rate_tot <- sum(infection_rates)
+      #recovery_rate_tot  <- sum(recovery_rates)
+      infection_rate_tot <- (I_count / n) * sum(beta_vec[S_nodes])
+      recovery_rate_tot  <- gamma_epi * I_count
 
       #==========================
       # New: extremist recruitment rates (and num of extremes)
@@ -360,14 +456,16 @@ server <- function(input, output, session) {
         num_extreme_blue  <- sum(opinions[members[[g]]] ==  2)
         num_moderate_red  <- sum(opinions[members[[g]]] == -1)
         num_moderate_blue <- sum(opinions[members[[g]]] ==  1)
-        #Tot_g <- length(members[[g]])
-        #valid <- Tot_g >= 2
-        rate_extreme_red[g]  <- alpha * num_extreme_red  * num_moderate_red #/ Tot_g
-        rate_extreme_blue[g] <- alpha * num_extreme_blue * num_moderate_blue #/ Tot_g
-
-        # same
-        rate_deradicalize_red[g] <- alpha_deradicalization * num_extreme_red  * num_moderate_red
-        rate_deradicalize_blue[g] <- alpha_deradicalization * num_extreme_blue * num_moderate_blue
+        
+        Tot_g <- length(members[[g]])
+        factor <- if (Tot_g > 0) 1 / Tot_g else 0 # avoid NAN or division by zero
+        
+        rate_extreme_red[g]  <- alpha * num_extreme_red  * num_moderate_red  * factor
+        rate_extreme_blue[g] <- alpha * num_extreme_blue * num_moderate_blue * factor
+        
+        rate_deradicalize_red[g]  <- alpha_deradicalization * num_extreme_red  * num_moderate_red  * factor
+        rate_deradicalize_blue[g] <- alpha_deradicalization * num_extreme_blue * num_moderate_blue * factor
+        
       }
       #==========================
 
@@ -376,7 +474,7 @@ server <- function(input, output, session) {
         rate_extreme_red + rate_extreme_blue +
         rate_deradicalize_red + rate_deradicalize_blue
 
-      lambda_tot <- sum(lambda_i) + infection_rate_tot + recovery_rate_tot
+      lambda_tot <- sum(lambda_i) #+ infection_rate_tot + recovery_rate_tot
       if (lambda_tot <= 0) break
 
 
@@ -453,7 +551,7 @@ server <- function(input, output, session) {
         enabled_moves <- c(enabled_moves, 6, 7)
       }
       
-      if (!isTRUE(input$Stubborn)) {
+      if (alpha_deradicalization > 0) {
         enabled_moves <- c(enabled_moves, 8, 9)
       }
       
@@ -472,6 +570,12 @@ server <- function(input, output, session) {
       if (move==1 && Ri_g>0) { # Red to Blue
         chosen <- sample(red_members[[group_i]],1)
         opinions[chosen] <- +1
+        
+        if (epi[chosen] == I) {
+          I_red  <- I_red - 1
+          I_blue <- I_blue + 1
+        }
+        
         # update every group where individual belongs
         for (g in groups_of_individual[[chosen]]) {
           idx <- which(red_members[[g]]==chosen)
@@ -487,6 +591,12 @@ server <- function(input, output, session) {
       } else if (move==2 && Bi_g>0) { # Blue to Red
         chosen <- sample(blue_members[[group_i]],1)
         opinions[chosen] <- -1
+        
+        if (epi[chosen] == I) {
+          I_blue <- I_blue - 1
+          I_red  <- I_red + 1
+        }
+        
         # update every group where individual belongs
         for (g in groups_of_individual[[chosen]]) {
           idx <- which(blue_members[[g]]==chosen)
@@ -553,6 +663,10 @@ server <- function(input, output, session) {
         if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
           chosen_moderate <- sample(moderates, 1)
           opinions[chosen_moderate] <- -2
+          
+          if (epi[chosen_moderate] == I) {
+            # stays red camp → NO counter change
+          }
 
           # UPDATE ALL GROUPS OF THE INDIVIDUAL
           for (g in groups_of_individual[[chosen_moderate]]) {
@@ -595,6 +709,10 @@ server <- function(input, output, session) {
 
           chosen_extreme <- sample(extremes, 1)
           opinions[chosen_extreme] <- -1
+          
+          if (epi[chosen_extreme] == I) {
+            # stays  → NO counter change
+          }
 
           # UPDATE ALL GROUPS OF THE INDIVIDUAL
           for (g in groups_of_individual[[chosen_extreme]]) {
@@ -610,13 +728,17 @@ server <- function(input, output, session) {
                  rate_deradicalize_blue[group_i] > 0 &&
                  Bi[group_i] > 0) {
 
-        moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
-        extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
+        moderates <- members[[group_i]][opinions[members[[group_i]]] == 1]
+        extremes <- members[[group_i]][opinions[members[[group_i]]] == 2]
 
         if (length(moderates) > 0 && length(extremes) > 0) {
 
           chosen_extreme <- sample(extremes, 1)
           opinions[chosen_extreme] <- 1
+          
+          if (epi[chosen_extreme] == I) {
+            # stays  → NO counter change
+          }
 
           # UPDATE ALL GROUPS OF THE INDIVIDUAL
           for (g in groups_of_individual[[chosen_extreme]]) {
@@ -641,36 +763,96 @@ server <- function(input, output, session) {
         # Decide infection vs recovery
         if (runif(1) < infection_rate_tot / (infection_rate_tot + recovery_rate_tot)) {
 
-          # # -------- Infection event --------
-          # probs <- infection_rates / sum(infection_rates)
-          # i <- sample(1:n, 1, prob = probs)
+          # # # -------- Infection event --------
+          # # probs <- infection_rates / sum(infection_rates)
+          # # i <- sample(1:n, 1, prob = probs)
+          # 
+          # #=======================
+          # inf_alias <- #build_alias(infection_rates / sum(infection_rates))
+          # rec_alias <- # build_alias(recovery_rates / sum(recovery_rates))
+          # 
+          # if (runif(1) < infection_rate_tot / (infection_rate_tot + recovery_rate_tot)) {
+          #   i <- alias_sample(inf_alias)
+          # } else {
+          #   i <- alias_sample(rec_alias)
+          # }
+          # #========================
+          # 
+          # # opinion at time of infection
+          # camp_i <- ifelse(opinions[i] < 0, "red", "blue")
+          # inf_time <- c(inf_time, t)
+          # inf_camp <- c(inf_camp, camp_i)
+          # 
+          # epi[i] <- I
           
-          #=======================
-          inf_alias <- build_alias(infection_rates / sum(infection_rates))
-          rec_alias <- build_alias(recovery_rates / sum(recovery_rates))
+          # pick random susceptible
+          if (length(S_nodes) == 0) next
+          weights <- beta_vec[S_nodes]
+          k <- sample.int(length(S_nodes), 1, prob = weights)
+          i <- S_nodes[k]
           
-          if (runif(1) < infection_rate_tot / (infection_rate_tot + recovery_rate_tot)) {
-            i <- alias_sample(inf_alias)
-          } else {
-            i <- alias_sample(rec_alias)
-          }
-          #========================
-
           # opinion at time of infection
           camp_i <- ifelse(opinions[i] < 0, "red", "blue")
           inf_time <- c(inf_time, t)
           inf_camp <- c(inf_camp, camp_i)
-
+          
+          # remove from S (swap-delete)
+          last <- S_nodes[length(S_nodes)]
+          S_nodes[k] <- last
+          pos_in_S[last] <- k
+          S_nodes <- S_nodes[-length(S_nodes)]
+          
+          # add to I
+          I_nodes <- c(I_nodes, i)
+          pos_in_I[i] <- length(I_nodes)
+          
+          # update state
           epi[i] <- I
+          
+          # update counters
+          S_count <- S_count - 1
+          I_count <- I_count + 1
+          
+          if (opinions[i] < 0) I_red <- I_red + 1 else I_blue <- I_blue + 1
 
         } else {
           
           # -------- Recovery event --------
-          probs <- recovery_rates / sum(recovery_rates)
-          i <- sample(1:n, 1, prob = probs)
-
+          # probs <- recovery_rates / sum(recovery_rates)
+          # i <- sample(1:n, 1, prob = probs)
+          # 
+          # epi[i] <- R
+          # pick random infected
+          if (length(I_nodes) == 0) next
+          k <- sample.int(length(I_nodes), 1)
+          i <- I_nodes[k]
+          
+          # # opinion at time of infection
+          # camp_i <- ifelse(opinions[i] < 0, "red", "blue")
+          # inf_time <- c(inf_time, t)
+          # inf_camp <- c(inf_camp, camp_i)
+          
+          # remove from I (swap-delete)
+          last <- I_nodes[length(I_nodes)]
+          I_nodes[k] <- last
+          pos_in_I[last] <- k
+          I_nodes <- I_nodes[-length(I_nodes)]
+          
+          # update state
           epi[i] <- R
+          
+          # update counters
+          I_count <- I_count - 1
+          R_count <- R_count + 1
+          
+          if (opinions[i] < 0) I_red <- I_red - 1 else I_blue <- I_blue - 1
+          if (opinions[i] < 0) R_red <- R_red + 1 else R_blue <- R_blue + 1
+          
+          S_red  <- sum(opinions < 0) - I_red - R_red
+          S_blue <- sum(opinions > 0) - I_blue - R_blue
+          
         }
+        
       }
       # ---- record step ----
       event_counter <- event_counter + 1
@@ -679,50 +861,65 @@ server <- function(input, output, session) {
       #  opinion_history <- cbind(opinion_history, opinions)
       #}
 
+      # if (event_counter %% record_every == 0) {
+      #   frac_temp <- sapply(levels, function(op) {
+      #     sum(opinions == op)/n
+      #   })
+      #   frac_mat <- cbind(frac_mat, frac_temp)
+      # }
+      
       if (event_counter %% record_every == 0) {
+        
+        #=========================
+        # Time
+        #=========================
+        time_hist <- c(time_hist, t)
+        
+        #=========================
+        # Voter fractions
+        #=========================
         frac_temp <- sapply(levels, function(op) {
-          sum(opinions == op)/n
+          sum(opinions == op) / n
         })
         frac_mat <- cbind(frac_mat, frac_temp)
+        
+        #=========================
+        # Epidemic: Overall
+        #=========================
+        S_hist <- c(S_hist, S_count)
+        I_hist <- c(I_hist, I_count)
+        R_hist <- c(R_hist, R_count)
+        
+        #=========================
+        # Epidemic: Opinion camp (O(1))
+        #=========================
+        S_red  <- sum(opinions < 0) - I_red - R_red
+        S_blue <- sum(opinions > 0) - I_blue - R_blue
+        
+        S_hist_red  <- c(S_hist_red,  S_red)
+        I_hist_red  <- c(I_hist_red,  I_red)
+        R_hist_red  <- c(R_hist_red,  R_red)
+        
+        S_hist_blue <- c(S_hist_blue, S_blue)
+        I_hist_blue <- c(I_hist_blue, I_blue)
+        R_hist_blue <- c(R_hist_blue, R_blue)
+        
+        #=========================
+        # Epidemic: Group membership
+        #=========================
+        all_group_members <- unique(unlist(members))
+        
+        S_hist_grp <- c(S_hist_grp, sum(epi[all_group_members] == S))
+        I_hist_grp <- c(I_hist_grp, sum(epi[all_group_members] == I))
+        R_hist_grp <- c(R_hist_grp, sum(epi[all_group_members] == R))
+        
+        outsiders_all <- setdiff(seq_len(n), all_group_members)
+        
+        S_hist_out <- c(S_hist_out, sum(epi[outsiders_all] == S))
+        I_hist_out <- c(I_hist_out, sum(epi[outsiders_all] == I))
+        R_hist_out <- c(R_hist_out, sum(epi[outsiders_all] == R))
       }
 
-    #=========================
-    # Record epidemics
-    #=========================
-
-    #--------------------------
-    # Overall
-    #--------------------------
-    time_hist <- c(time_hist, t)
-    S_hist <- c(S_hist, sum(epi==S))
-    I_hist <- c(I_hist, sum(epi==I))
-    R_hist <- c(R_hist, sum(epi==R))
-
-    #--------------------------
-    # SIR by opinion camp
-    #--------------------------
-    camp <- ifelse(opinions < 0, "red", "blue")
-
-    S_hist_red <- c(S_hist_red,  sum(epi[camp=="red"]  == S) )
-    I_hist_red  <- c(I_hist_red, sum(epi[camp=="red"]  == I) )
-    R_hist_red  <- c(R_hist_red, sum(epi[camp=="red"]  == R) )
-
-    S_hist_blue <- c(S_hist_blue, sum(epi[camp=="blue"] == S) )
-    I_hist_blue <- c(I_hist_blue, sum(epi[camp=="blue"] == I) )
-    R_hist_blue <- c(R_hist_blue, sum(epi[camp=="blue"] == R) )
-
-    #--------------------------
-    # SIR by membership
-    #--------------------------
-    all_group_members <- unique(unlist(members))
-    S_hist_grp <- c(S_hist_grp, sum(epi[all_group_members] == S))
-    I_hist_grp <- c(I_hist_grp, sum(epi[all_group_members] == I))
-    R_hist_grp <- c(R_hist_grp, sum(epi[all_group_members] == R))
-
-    outsiders_all <- setdiff(1:length(epi), all_group_members)
-    S_hist_out <- c(S_hist_out, sum(epi[outsiders_all] == S))
-    I_hist_out <- c(I_hist_out, sum(epi[outsiders_all] == I))
-    R_hist_out <- c(R_hist_out, sum(epi[outsiders_all] == R))
 
     }
 
@@ -730,11 +927,12 @@ server <- function(input, output, session) {
     opinion_history <- cbind(opinion_history, opinions)
     frac_mat <- t(frac_mat)
     colnames(frac_mat) <- levels
+    frac_mat <-cbind(time_hist, frac_mat)
 
-    # if (rig_dirty) {
-    #   bipartite <- reconstruct_bipartite(members, n, m)
-    #   RIG <- bipartite_to_rig(bipartite)
-    # }
+    if (rig_dirty && isTRUE(input$show_rig)) {
+      bipartite <- reconstruct_bipartite(members, n, m)
+      RIG <- bipartite_to_rig(bipartite)
+    }
 
     # Final epidemic history
     SIR_df <- data.frame(time_hist,
@@ -841,7 +1039,15 @@ server <- function(input, output, session) {
     visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
 
   # Voter's dynamics
-  output$fracPlot <- renderPlot({ req(simData()); visual_step_time(simData()$frac_mat, simData()$num_opinions, length(simData()$opinion_history[,1])) })
+  output$fracPlot <- renderPlot({
+    req(simData())
+    
+    visual_step_time(
+      simData()$frac_mat,
+      simData()$num_opinions
+    )
+  })  
+  
   output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
   #output$heatmapPlot <- renderPlot({ req(simData()); heatmapPlot(simData()$opinion_history, simData()$num_opinions) })
   #output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$B0) })
