@@ -2,7 +2,7 @@ library(shiny)
 library(igraph)
 library(Matrix)
 library(PandemicsR)
-
+library(zip)
 #==========================
 # --- UI ---
 #==========================
@@ -74,7 +74,8 @@ ui <- fluidPage(
       ),
       
       # Run
-      actionButton("runSim", "Run Simulation")
+      actionButton("runSim", "Run Simulation"),
+      downloadButton("downloadAllPlots", "Download All Plots")
     ),
 
     #==========================
@@ -190,7 +191,7 @@ server <- function(input, output, session) {
     S <- 0; I <- 1; R <- 2
 
     # Initial Parameters (NEW)
-    I0 <- input$I0 # number of initial infected
+    I0 <- min(input$I0, n) # number of initial infected
     beta_red  <- input$beta_red
     beta_blue <- input$beta_blue # infection rate blue opinion
     gamma_epi <- input$gamma_epi #recovery rate
@@ -212,10 +213,16 @@ server <- function(input, output, session) {
     #opinions0 <- opinions
     opinion_history <- matrix(opinions, ncol = 1)
 
-    levels <- sort(unique(as.vector(opinions)))
-    frac_mat <- sapply(levels, function(op) {
+    op_levels <- sort(unique(as.vector(opinions)))
+    frac_mat <- sapply(op_levels, function(op) {
       sum(opinions == op)/n
     })
+    
+    total_red  <- sum(opinions < 0)
+    total_blue <- sum(opinions > 0)
+    
+    is_member <- logical(n)
+    membership_count <- integer(n)
 
     # Group tracker
     members <- vector("list", m)
@@ -234,6 +241,15 @@ server <- function(input, output, session) {
       outsiders[[g]] <- setdiff(seq_len(n), ids)
       for (i in ids) groups_of_individual[[i]] <- c(groups_of_individual[[i]], g)
     }
+    
+    for (g in seq_len(m)) {
+      ids <- members[[g]]
+      
+      membership_count[ids] <- membership_count[ids] + 1
+    }
+    
+    is_member <- membership_count > 0
+    
     # moderates
     Ri <- sapply(red_members, length)
     Bi <- sapply(blue_members, length)
@@ -241,7 +257,7 @@ server <- function(input, output, session) {
 
     #----- NEW
     event_counter <- 0
-    record_every <- n
+    record_every <- max_records <- floor(1e4 / 8 / (16 + num_opinions))#max(1, floor( t_max/ 10))
     members0 <- members
     
     #=====================
@@ -316,19 +332,49 @@ server <- function(input, output, session) {
     #=====================
     # Group membership SIR
     #=====================
+    grp_nodes <- which(is_member)
     
-    all_group_members <- unique(unlist(members))
+    grp_states <- epi[grp_nodes]
     
-    S_hist_grp <- c(sum(epi[all_group_members] == S))
-    I_hist_grp <- c(sum(epi[all_group_members] == I))
-    R_hist_grp <- c(sum(epi[all_group_members] == R))
+    S_grp <- sum(grp_states == S)
+    I_grp <- sum(grp_states == I)
+    R_grp <- sum(grp_states == R)
     
-    # Outsiders
-    outsiders_all <- setdiff(seq_len(n), all_group_members)
+    S_hist_grp <- c(S_grp)
+    I_hist_grp <- c(I_grp)
+    R_hist_grp <- c(R_grp)
     
-    S_hist_out <- c(sum(epi[outsiders_all] == S))
-    I_hist_out <- c(sum(epi[outsiders_all] == I))
-    R_hist_out <- c(sum(epi[outsiders_all] == R))
+    # grp_nodes <- which(is_member)
+    # 
+    # S_hist_grp <- c(S_hist_grp, sum(epi[grp_nodes] == S))
+    # I_hist_grp <- c(I_hist_grp, sum(epi[grp_nodes] == I))
+    # R_hist_grp <- c(R_hist_grp, sum(epi[grp_nodes] == R))
+    
+    out_nodes <- which(!is_member)
+    
+    out_states <- epi[out_nodes]
+    
+    S_out <- sum(out_states == S)
+    I_out <- sum(out_states == I)
+    R_out <- sum(out_states == R)
+    
+    S_hist_out <- c(S_out)
+    I_hist_out <- c(I_out)
+    R_hist_out <- c(R_out)
+    # #all_group_members <- unique(unlist(members))
+    # 
+
+    # 
+    # S_hist_grp <- c(sum(epi[all_group_members] == S))
+    # I_hist_grp <- c(sum(epi[all_group_members] == I))
+    # R_hist_grp <- c(sum(epi[all_group_members] == R))
+    # 
+    # # Outsiders
+    # #outsiders_all <- setdiff(seq_len(n), all_group_members)
+    # 
+    # S_hist_out <- c(sum(epi[outsiders_all] == S))
+    # I_hist_out <- c(sum(epi[outsiders_all] == I))
+    # R_hist_out <- c(sum(epi[outsiders_all] == R))
     # #=====================
     # # Initialize epidemic
     # epi <- rep(S, n)
@@ -412,7 +458,8 @@ server <- function(input, output, session) {
 
       # The rate of joining a group for someone not yet part of a group is c/m.
       # The rate of leaving a group is
-      join_term <- (c_param / m) * (n - Tot)/n
+      #join_term <- (c_param / m) * (n - Tot)/n
+      join_term <- pmax((c_param / m) * (n - Tot)/n, 0)
 
       # The rate of leave a group is B+ or B- depending on the thershold
       frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
@@ -439,8 +486,13 @@ server <- function(input, output, session) {
       # Aggregate epidemic rates
       #infection_rate_tot <- sum(infection_rates)
       #recovery_rate_tot  <- sum(recovery_rates)
-      infection_rate_tot <- (I_count / n) * sum(beta_vec[S_nodes])
-      recovery_rate_tot  <- gamma_epi * I_count
+      if (!isTRUE(input$runEpidemic)) {
+        infection_rate_tot <- 0
+        recovery_rate_tot <- 0
+      }else{
+        infection_rate_tot <- (I_count / n) * sum(beta_vec[S_nodes])
+        recovery_rate_tot  <- gamma_epi * I_count
+      }
 
       #==========================
       # New: extremist recruitment rates (and num of extremes)
@@ -473,15 +525,19 @@ server <- function(input, output, session) {
       lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate +
         rate_extreme_red + rate_extreme_blue +
         rate_deradicalize_red + rate_deradicalize_blue
+      
+      social_rate <- sum(lambda_i)
+      epi_rate <- infection_rate_tot + recovery_rate_tot
+      
+      lambda_tot <- social_rate + epi_rate
 
-      lambda_tot <- sum(lambda_i) #+ infection_rate_tot + recovery_rate_tot
       if (lambda_tot <= 0) break
 
 
       #====================
       # Group selection at random
       #====================
-      group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / lambda_tot) else 1
+      group_i <- if(m > 1) sample(1:m, 1L, prob = lambda_i / social_rate) else 1
 
       Ri_g <- Ri[group_i]; Bi_g <- Bi[group_i]
       voter_g <- voter_term[group_i]; join_g <- join_term[group_i]
@@ -508,15 +564,11 @@ server <- function(input, output, session) {
       #====================
       u_event <- runif(1)
 
-      social_rate <- sum(lambda_i)
-      epi_rate <- infection_rate_tot + recovery_rate_tot
-      
-      
       #================
       # Apply a random move in Gillespie time
       # Gillespie time
       #================
-      dt <- rexp(1, lambda_tot)
+      dt <- rexp(1, rate = lambda_tot)
       t <- t + dt
       if (t >= t_max) break
 
@@ -571,10 +623,24 @@ server <- function(input, output, session) {
         chosen <- sample(red_members[[group_i]],1)
         opinions[chosen] <- +1
         
+        
         if (epi[chosen] == I) {
+          
           I_red  <- I_red - 1
           I_blue <- I_blue + 1
+          
+        } else if (epi[chosen] == R) {
+          
+          R_red  <- R_red - 1
+          R_blue <- R_blue + 1
+          
         }
+        
+        total_red  <- total_red - 1
+        total_blue <- total_blue + 1
+        
+        S_red = total_red - I_red - R_red
+        S_blue = total_blue - I_blue - R_blue
         
         # update every group where individual belongs
         for (g in groups_of_individual[[chosen]]) {
@@ -583,8 +649,15 @@ server <- function(input, output, session) {
             red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])] # Replaces the chosen individual with the last element
             red_members[[g]] <- red_members[[g]][-length(red_members[[g]])] # delete last
             blue_members[[g]] <- c(blue_members[[g]], chosen)
+            
             Ri[g] <- Ri[g]-1
             Bi[g] <- Bi[g]+1
+            
+            # IMPORTANT:
+            # recompute TRUE red/blue totals from opinions
+            #Ri[g] <- sum(opinions[members[[g]]] < 0)
+            #Bi[g] <- sum(opinions[members[[g]]] > 0)
+            
           }
         }
 
@@ -593,10 +666,22 @@ server <- function(input, output, session) {
         opinions[chosen] <- -1
         
         if (epi[chosen] == I) {
+          
           I_blue <- I_blue - 1
           I_red  <- I_red + 1
+          
+        } else if (epi[chosen] == R) {
+          
+          R_blue <- R_blue - 1
+          R_red  <- R_red + 1
+          
         }
         
+        total_red  <- total_red + 1
+        total_blue <- total_blue - 1
+        
+        S_red = total_red - I_red - R_red
+        S_blue = total_blue - I_blue - R_blue
         # update every group where individual belongs
         for (g in groups_of_individual[[chosen]]) {
           idx <- which(blue_members[[g]]==chosen)
@@ -604,8 +689,13 @@ server <- function(input, output, session) {
             blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
             blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
             red_members[[g]] <- c(red_members[[g]], chosen)
+            
             Bi[g] <- Bi[g]-1
             Ri[g] <- Ri[g]+1
+            # IMPORTANT:
+            # recompute TRUE red/blue totals from opinions
+            #Ri[g] <- sum(opinions[members[[g]]] < 0)
+            #Bi[g] <- sum(opinions[members[[g]]] > 0)
           }
         }
 
@@ -616,6 +706,31 @@ server <- function(input, output, session) {
         outsiders[[group_i]] <- outsiders[[group_i]][-length(outsiders[[group_i]])]
 
         members[[group_i]] <- c(members[[group_i]], chosen)
+        
+        was_outsider <- (membership_count[chosen] == 0)
+        membership_count[chosen] <- membership_count[chosen] + 1
+
+        #is_member[chosen] <- TRUE
+        
+        # if (was_outsider) {
+        #   
+        #   if (epi[chosen] == S) {
+        #     
+        #     S_out <- S_out - 1
+        #     S_grp <- S_grp + 1
+        #     
+        #   } else if (epi[chosen] == I) {
+        #     
+        #     I_out <- I_out - 1
+        #     I_grp <- I_grp + 1
+        #     
+        #   } else {
+        #     
+        #     R_out <- R_out - 1
+        #     R_grp <- R_grp + 1
+        #   }
+        # }        #is_member[chosen] <- TRUE
+        
         groups_of_individual[[chosen]] <- c(groups_of_individual[[chosen]], group_i)
         if (opinions[chosen]< 0) {
           red_members[[group_i]] <- c(red_members[[group_i]], chosen)
@@ -635,9 +750,38 @@ server <- function(input, output, session) {
         idx_m <- which(members[[group_i]]==chosen)
         members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
         members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
+        
         groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
+        
+        will_be_outsider <- (membership_count[chosen] == 1)
+        membership_count[chosen] <- membership_count[chosen] - 1
+
+        # if (will_be_outsider) {
+        #   
+        #   if (epi[chosen] == S) {
+        #     
+        #     S_grp <- S_grp - 1
+        #     S_out <- S_out + 1
+        #     
+        #   } else if (epi[chosen] == I) {
+        #     
+        #     I_grp <- I_grp - 1
+        #     I_out <- I_out + 1
+        #     
+        #   } else {
+        #     
+        #     R_grp <- R_grp - 1
+        #     R_out <- R_out + 1
+        #   }
+        # }
         outsiders[[group_i]] <- c(outsiders[[group_i]], chosen)
+        
         Ri[group_i] <- Ri[group_i]-1
+        
+        # IMPORTANT:
+        # recompute TRUE red/blue totals from opinions
+        # Ri[group_i] <- sum(opinions[members[[group_i]]] < 0)
+        # Bi[group_i] <- sum(opinions[members[[group_i]]] > 0)
         rig_dirty <- TRUE
 
       } else if (move==5 && Bi_g>0) {
@@ -650,10 +794,41 @@ server <- function(input, output, session) {
         members[[group_i]][idx_m] <- members[[group_i]][length(members[[group_i]])]
         members[[group_i]] <- members[[group_i]][-length(members[[group_i]])]
         groups_of_individual[[chosen]] <- setdiff(groups_of_individual[[chosen]], group_i)
+        
+        will_be_outsider <- (membership_count[chosen] == 1)
+        membership_count[chosen] <- membership_count[chosen] - 1
+        
+        # if (will_be_outsider) {
+        #   
+        #   if (epi[chosen] == S) {
+        #     
+        #     S_grp <- S_grp - 1
+        #     S_out <- S_out + 1
+        #     
+        #   } else if (epi[chosen] == I) {
+        #     
+        #     I_grp <- I_grp - 1
+        #     I_out <- I_out + 1
+        #     
+        #   } else {
+        #     
+        #     R_grp <- R_grp - 1
+        #     R_out <- R_out + 1
+        #   }
+        # }
+        # 
+        
         outsiders[[group_i]] <- c(outsiders[[group_i]], chosen)
+        
         Bi[group_i] <- Bi[group_i]-1
+        # IMPORTANT:
+        # recompute TRUE red/blue totals from opinions
+        #Ri[group_i] <- sum(opinions[members[[group_i]]] < 0)
+        #Bi[group_i] <- sum(opinions[members[[group_i]]] > 0)
+        
         rig_dirty <- TRUE
-      } else if (move == 6 &&
+      
+        } else if (move == 6 &&
                  rate_extreme_red[group_i] > 0 &&
                  Ri[group_i] > 0) {
 
@@ -669,14 +844,19 @@ server <- function(input, output, session) {
           }
 
           # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_moderate]]) {
-            idx <- which(red_members[[g]] == chosen_moderate)
-            if (length(idx) > 0) {
-              red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])]
-              red_members[[g]] <- red_members[[g]][-length(red_members[[g]])]
-              Ri[g] <- Ri[g] - 1 # moderate red turns extreme red
-            }
-          }
+          #for (g in groups_of_individual[[chosen_moderate]]) {
+            #idx <- which(red_members[[g]] == chosen_moderate)
+            #if (length(idx) > 0) {
+              #red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])]
+              #red_members[[g]] <- red_members[[g]][-length(red_members[[g]])]
+              #Ri[g] <- Ri[g] - 1 # moderate red turns extreme red
+              
+              # IMPORTANT:
+              # recompute TRUE red/blue totals from opinions
+              #Ri[g] <- sum(opinions[members[[g]]] < 0)
+              #Bi[g] <- sum(opinions[members[[g]]] > 0)
+              #}
+          #}
         }
       } else if (move == 7 &&
                  rate_extreme_blue[group_i] > 0 &&
@@ -688,15 +868,20 @@ server <- function(input, output, session) {
           chosen_moderate <- sample(moderates, 1)
           opinions[chosen_moderate] <- 2
 
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_moderate]]) {
-            idx <- which(blue_members[[g]] == chosen_moderate)
-            if (length(idx) > 0) {
-              blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
-              blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
-              Bi[g] <- Bi[g] - 1 # moderate blue turns extreme blues
-            }
-          }
+          # # UPDATE ALL GROUPS OF THE INDIVIDUAL
+          # for (g in groups_of_individual[[chosen_moderate]]) {
+          #   idx <- which(blue_members[[g]] == chosen_moderate)
+          #   if (length(idx) > 0) {
+          #     blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
+          #     blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
+          #     #Bi[g] <- Bi[g] - 1 # moderate blue turns extreme blues
+          #     
+          #     # IMPORTANT:
+          #     # recompute TRUE red/blue totals from opinions
+          #     Ri[g] <- sum(opinions[members[[g]]] < 0)
+          #     Bi[g] <- sum(opinions[members[[g]]] > 0)
+          #    }
+          #}
         }
       } else if (move == 8 &&
                  rate_deradicalize_red[group_i] > 0 &&
@@ -714,15 +899,19 @@ server <- function(input, output, session) {
             # stays  → NO counter change
           }
 
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_extreme]]) {
-
-            # add to red_members (moderates)
-            red_members[[g]] <- c(red_members[[g]], chosen_extreme)
-
-            # update count
-            Ri[g] <- Ri[g] + 1
-          }
+          # # UPDATE ALL GROUPS OF THE INDIVIDUAL
+          # for (g in groups_of_individual[[chosen_extreme]]) {
+          # 
+          #   # add to red_members (moderates)
+          #   red_members[[g]] <- c(red_members[[g]], chosen_extreme)
+          # 
+          #   # update count
+          #   #Ri[g] <- Ri[g] + 1
+          #   # IMPORTANT:
+          #   # recompute TRUE red/blue totals from opinions
+          #   Ri[g] <- sum(opinions[members[[g]]] < 0)
+          #   Bi[g] <- sum(opinions[members[[g]]] > 0)
+          #}
         }
       } else if (move == 9 &&
                  rate_deradicalize_blue[group_i] > 0 &&
@@ -740,15 +929,20 @@ server <- function(input, output, session) {
             # stays  → NO counter change
           }
 
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_extreme]]) {
-
-            # add to blue_members (moderates)
-            blue_members[[g]] <- c(blue_members[[g]], chosen_extreme)
-
-            # update count
-            Bi[g] <- Bi[g] + 1
-          }
+          # # UPDATE ALL GROUPS OF THE INDIVIDUAL
+          # for (g in groups_of_individual[[chosen_extreme]]) {
+          # 
+          #   # add to blue_members (moderates)
+          #   blue_members[[g]] <- c(blue_members[[g]], chosen_extreme)
+          # 
+          #   # update count
+          #   #Bi[g] <- Bi[g] + 1
+          #   
+          #   # IMPORTANT:
+          #   # recompute TRUE red/blue totals from opinions
+          #   Ri[g] <- sum(opinions[members[[g]]] < 0)
+          #   Bi[g] <- sum(opinions[members[[g]]] > 0)
+          #}
         }
       }
       
@@ -788,7 +982,10 @@ server <- function(input, output, session) {
           # pick random susceptible
           if (length(S_nodes) == 0) next
           weights <- beta_vec[S_nodes]
+          
+          if (sum(weights) <= 0) next
           k <- sample.int(length(S_nodes), 1, prob = weights)
+
           i <- S_nodes[k]
           
           # opinion at time of infection
@@ -813,6 +1010,17 @@ server <- function(input, output, session) {
           S_count <- S_count - 1
           I_count <- I_count + 1
           
+          # if (is_member[i]) {
+          #   
+          #   S_grp <- S_grp - 1
+          #   I_grp <- I_grp + 1
+          #   
+          # } else {
+          #   
+          #   S_out <- S_out - 1
+          #   I_out <- I_out + 1
+          # }
+          
           if (opinions[i] < 0) I_red <- I_red + 1 else I_blue <- I_blue + 1
 
         } else {
@@ -826,6 +1034,17 @@ server <- function(input, output, session) {
           if (length(I_nodes) == 0) next
           k <- sample.int(length(I_nodes), 1)
           i <- I_nodes[k]
+          
+          # if (is_member[i]) {
+          #   
+          #   I_grp <- I_grp - 1
+          #   R_grp <- R_grp + 1
+          #   
+          # } else {
+          #   
+          #   I_out <- I_out - 1
+          #   R_out <- R_out + 1
+          # }
           
           # # opinion at time of infection
           # camp_i <- ifelse(opinions[i] < 0, "red", "blue")
@@ -848,10 +1067,18 @@ server <- function(input, output, session) {
           if (opinions[i] < 0) I_red <- I_red - 1 else I_blue <- I_blue - 1
           if (opinions[i] < 0) R_red <- R_red + 1 else R_blue <- R_blue + 1
           
-          S_red  <- sum(opinions < 0) - I_red - R_red
-          S_blue <- sum(opinions > 0) - I_blue - R_blue
+          S_red  <- total_red  - I_red  - R_red
+          S_blue <- total_blue - I_blue - R_blue
+          #S_red  <- sum(opinions < 0) - I_red - R_red
+          #S_blue <- sum(opinions > 0) - I_blue - R_blue
           
         }
+        
+        # stopifnot(
+        #   S_count + I_count + R_count == n,
+        #   S_grp + I_grp + R_grp +
+        #     S_out + I_out + R_out == n
+        # )
         
       }
       # ---- record step ----
@@ -862,13 +1089,21 @@ server <- function(input, output, session) {
       #}
 
       # if (event_counter %% record_every == 0) {
-      #   frac_temp <- sapply(levels, function(op) {
+      #   frac_temp <- sapply(op_levels, function(op) {
       #     sum(opinions == op)/n
       #   })
       #   frac_mat <- cbind(frac_mat, frac_temp)
       # }
       
       if (event_counter %% record_every == 0) {
+        
+        is_member <- membership_count > 0
+        
+        grp_nodes <- which(is_member)
+
+        S_grp <- sum(epi[grp_nodes] == S)
+        I_grp <- sum(epi[grp_nodes] == I)
+        R_grp <- sum(epi[grp_nodes] == R)
         
         #=========================
         # Time
@@ -878,7 +1113,7 @@ server <- function(input, output, session) {
         #=========================
         # Voter fractions
         #=========================
-        frac_temp <- sapply(levels, function(op) {
+        frac_temp <- sapply(op_levels, function(op) {
           sum(opinions == op) / n
         })
         frac_mat <- cbind(frac_mat, frac_temp)
@@ -893,8 +1128,8 @@ server <- function(input, output, session) {
         #=========================
         # Epidemic: Opinion camp (O(1))
         #=========================
-        S_red  <- sum(opinions < 0) - I_red - R_red
-        S_blue <- sum(opinions > 0) - I_blue - R_blue
+        S_red  <- total_red  - I_red - R_red
+        S_blue <- total_blue - I_blue - R_blue
         
         S_hist_red  <- c(S_hist_red,  S_red)
         I_hist_red  <- c(I_hist_red,  I_red)
@@ -909,9 +1144,19 @@ server <- function(input, output, session) {
         #=========================
         all_group_members <- unique(unlist(members))
         
-        S_hist_grp <- c(S_hist_grp, sum(epi[all_group_members] == S))
-        I_hist_grp <- c(I_hist_grp, sum(epi[all_group_members] == I))
-        R_hist_grp <- c(R_hist_grp, sum(epi[all_group_members] == R))
+        if (length(all_group_members) > 0) {
+          
+          S_hist_grp <- c(S_hist_grp, S_grp)
+          I_hist_grp <- c(I_hist_grp, I_grp)
+          R_hist_grp <- c(R_hist_grp, R_grp)
+          
+        } else {
+          
+          S_hist_grp <- c(S_hist_grp, 0)
+          I_hist_grp <- c(I_hist_grp, 0)
+          R_hist_grp <- c(R_hist_grp, 0)
+          
+        }
         
         outsiders_all <- setdiff(seq_len(n), all_group_members)
         
@@ -926,13 +1171,18 @@ server <- function(input, output, session) {
     # Final opinion history
     opinion_history <- cbind(opinion_history, opinions)
     frac_mat <- t(frac_mat)
-    colnames(frac_mat) <- levels
+    colnames(frac_mat) <- op_levels
     frac_mat <-cbind(time_hist, frac_mat)
 
     if (rig_dirty && isTRUE(input$show_rig)) {
       bipartite <- reconstruct_bipartite(members, n, m)
       RIG <- bipartite_to_rig(bipartite)
     }
+    
+    print(length(time_hist))
+    print(length(S_hist))
+    print(length(I_hist))
+    print(length(R_hist))
 
     # Final epidemic history
     SIR_df <- data.frame(time_hist,
@@ -996,7 +1246,7 @@ server <- function(input, output, session) {
   output$compTime <- renderText({
     req(simData())
     paste0("Computation time: ",
-           round(simData()$comp_time, 3),
+           round(as.numeric(simData()$comp_time, units = "secs"), 3),
            " seconds")
   })
   
@@ -1085,8 +1335,186 @@ server <- function(input, output, session) {
   #   req(simData())
   #   req(input$runEpidemic)
   #   visual_SIR(inf_time = simData()$inf_time, inf_camp = simData()$inf_camp)  })
+  
+  output$downloadAllPlots <- downloadHandler(
+    
+    filename = function() {
+      paste0("all_plots_", Sys.Date(), ".zip")
+    },
+    
+    content = function(file) {
+      
+      req(simData())
+      
+      # Temporary folder
+      tmpdir <- tempdir()
+      
+      #==========================
+      # Helper function
+      #==========================
+      save_plot <- function(filename, plot_expr) {
+        
+        filepath <- file.path(tmpdir, filename)
+        
+        png(
+          filename = filepath,
+          width = 1400,
+          height = 1000,
+          res = 150
+        )
+        
+        plot_expr
+        
+        dev.off()
+      }
+      
+      #==========================
+      # Opinion plots
+      #==========================
+      
+      save_plot(
+        "opinion_fractions.png",
+        visual_step_time(
+          simData()$frac_mat,
+          simData()$num_opinions
+        )
+      )
+      
+      save_plot(
+        "overall_histogram.png",
+        visual_histo(
+          simData()$opinion_history,
+          simData()$num_opinions
+        )
+      )
+      
+      save_plot(
+        "initial_group_histogram.png",
+        visual_histo_pergroup(
+          simData()$opinion_history[,1],
+          simData()$num_opinions,
+          simData()$members0
+        )
+      )
+      
+      save_plot(
+        "final_group_histogram.png",
+        visual_histo_pergroup(
+          simData()$opinion_history[, ncol(simData()$opinion_history)],
+          simData()$num_opinions,
+          simData()$members
+        )
+      )
+      
+      #==========================
+      # Epidemic plots
+      #==========================
+      
+      if (isTRUE(input$runEpidemic)) {
+        
+        save_plot(
+          "sir_overall.png",
+          visual_step_time_SIR(
+            x = simData()$SIR_df
+          )
+        )
+        
+        save_plot(
+          "sir_red.png",
+          visual_step_time_SIR(
+            x = simData()$SIR_df_opinion_red
+          )
+        )
+        
+        save_plot(
+          "sir_blue.png",
+          visual_step_time_SIR(
+            x = simData()$SIR_df_opinion_blue
+          )
+        )
+        
+        save_plot(
+          "sir_members.png",
+          visual_step_time_SIR(
+            x = simData()$SIR_df_grp
+          )
+        )
+        
+        save_plot(
+          "sir_isolated.png",
+          visual_step_time_SIR(
+            x = simData()$SIR_df_out
+          )
+        )
+      }
+      
+      #==========================
+      # Graph plots
+      #==========================
+      
+      if (isTRUE(input$show_rig0)) {
+        
+        save_plot(
+          "initial_rig.png",
+          visual_step_multi(
+            simData()$RIG0,
+            simData()$opinion_history[,1],
+            simData()$num_opinions
+          )
+        )
+        
+        save_plot(
+          "initial_bipartite.png",
+          visual_bipartite(
+            simData()$B0,
+            simData()$opinion_history[,1],
+            simData()$num_opinions
+          )
+        )
+      }
+      
+      if (isTRUE(input$show_rig)) {
+        
+        save_plot(
+          "final_rig.png",
+          visual_step_multi(
+            simData()$RIG,
+            simData()$opinion_history[, ncol(simData()$opinion_history)],
+            simData()$num_opinions
+          )
+        )
+        
+        save_plot(
+          "final_bipartite.png",
+          visual_bipartite(
+            simData()$B,
+            simData()$opinion_history[, ncol(simData()$opinion_history)],
+            simData()$num_opinions
+          )
+        )
+      }
+      
+      #==========================
+      # Create ZIP file
+      #==========================
+      
+      files <- list.files(
+        tmpdir,
+        pattern = "\\.png$",
+        full.names = TRUE
+      )
+      
+      zip::zipr(
+        zipfile = file,
+        files = files
+      )
+    }
+  )
+  
+  
+  
+}
 
-  }
 
 #==========================
 # --- Run App ---
