@@ -664,19 +664,7 @@ server <- function(input, output, session) {
           chosen_moderate <- sample(moderates, 1)
           opinions[chosen_moderate] <- -2
           
-          if (epi[chosen_moderate] == I) {
-            # stays red camp → NO counter change
-          }
-
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_moderate]]) {
-            idx <- which(red_members[[g]] == chosen_moderate)
-            if (length(idx) > 0) {
-              red_members[[g]][idx] <- red_members[[g]][length(red_members[[g]])]
-              red_members[[g]] <- red_members[[g]][-length(red_members[[g]])]
-              Ri[g] <- Ri[g] - 1 # moderate red turns extreme red
-            }
-          }
+          # The individual stays in the red camp, so red_members and Ri do not change.
         }
       } else if (move == 7 &&
                  rate_extreme_blue[group_i] > 0 &&
@@ -688,15 +676,7 @@ server <- function(input, output, session) {
           chosen_moderate <- sample(moderates, 1)
           opinions[chosen_moderate] <- 2
 
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_moderate]]) {
-            idx <- which(blue_members[[g]] == chosen_moderate)
-            if (length(idx) > 0) {
-              blue_members[[g]][idx] <- blue_members[[g]][length(blue_members[[g]])]
-              blue_members[[g]] <- blue_members[[g]][-length(blue_members[[g]])]
-              Bi[g] <- Bi[g] - 1 # moderate blue turns extreme blues
-            }
-          }
+          # The individual stays in the blue camp, so blue_members and Bi do not change.
         }
       } else if (move == 8 &&
                  rate_deradicalize_red[group_i] > 0 &&
@@ -710,19 +690,7 @@ server <- function(input, output, session) {
           chosen_extreme <- sample(extremes, 1)
           opinions[chosen_extreme] <- -1
           
-          if (epi[chosen_extreme] == I) {
-            # stays  → NO counter change
-          }
-
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_extreme]]) {
-
-            # add to red_members (moderates)
-            red_members[[g]] <- c(red_members[[g]], chosen_extreme)
-
-            # update count
-            Ri[g] <- Ri[g] + 1
-          }
+          # The individual stays in the red camp, so red_members and Ri do not change.
         }
       } else if (move == 9 &&
                  rate_deradicalize_blue[group_i] > 0 &&
@@ -736,19 +704,7 @@ server <- function(input, output, session) {
           chosen_extreme <- sample(extremes, 1)
           opinions[chosen_extreme] <- 1
           
-          if (epi[chosen_extreme] == I) {
-            # stays  → NO counter change
-          }
-
-          # UPDATE ALL GROUPS OF THE INDIVIDUAL
-          for (g in groups_of_individual[[chosen_extreme]]) {
-
-            # add to blue_members (moderates)
-            blue_members[[g]] <- c(blue_members[[g]], chosen_extreme)
-
-            # update count
-            Bi[g] <- Bi[g] + 1
-          }
+          # The individual stays in the blue camp, so blue_members and Bi do not change.
         }
       }
       
