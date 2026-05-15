@@ -4,10 +4,6 @@
 #'
 #' @name get_palette
 #'
-#' @import Matrix
-#' @import igraph
-#' @import grDevices
-#'
 #' @param num_opinions number of opinions
 #'
 #' @return palette \code{x}.
@@ -20,6 +16,6 @@
 #' @export
 get_palette <- function(num_opinions){
 
-  colorRampPalette(c("darkred", "lightcoral", "lightblue", "darkblue"))(num_opinions)
+  grDevices::colorRampPalette(c("darkred", "lightcoral", "lightblue", "darkblue"))(num_opinions)
 
-  }
+}

@@ -13,10 +13,6 @@
 #'
 #' @name bipartite_to_rig
 #'
-#' @import Matrix
-#' @import igraph
-#'
-#'
 #' @param bipartite_matrix bipartite_matrix
 #'
 #' @return Random Intersection Graph \code{rig}.
@@ -27,8 +23,8 @@
 #' #---------------------------------
 #' @export
 bipartite_to_rig <- function(bipartite_matrix) {
-  rig <- bipartite_matrix %*% t(bipartite_matrix)
+  rig <- Matrix::tcrossprod(bipartite_matrix)
   rig@x[rig@x > 0] <- 1
-  diag(rig) <- 0 # avoid self loops
+  Matrix::diag(rig) <- 0 # avoid self loops
   return(rig)
 }

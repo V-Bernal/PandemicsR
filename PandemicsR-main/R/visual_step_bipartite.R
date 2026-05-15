@@ -4,9 +4,6 @@
 #'
 #' @name visual_bipartite
 #'
-#' @import Matrix
-#' @import igraph
-#'
 #' @param opinions number of group vertices
 #' @param bipartite bipartite
 #' @param num_opinions number opinions
@@ -75,22 +72,23 @@ visual_bipartite <- function(bipartite, opinions, num_opinions){
     return(invisible(NULL))
   }
 
-  g <- graph_from_biadjacency_matrix(bipartite_graph)
+  g <- igraph::graph_from_biadjacency_matrix(bipartite_graph)
 
   # Scale vertex size down for large networks
-  n_nodes <- vcount(g)
+  n_nodes <- igraph::vcount(g)
 
   # Set colors by type
-  V(g)$color <- ifelse(test = V(g)$type, yes = "yellow", no = my_palette[match(opinions, levels_vec)])
-  V(g)$size <- max(10, 25 * (10 / n_nodes))
-  V(g)$label <- ifelse(test = V(g)$type, yes = paste("g", 1:ncol(bipartite), sep = ""), no = NA)
+  vertex_type <- igraph::V(g)$type
+  vertex_color <- ifelse(test = vertex_type, yes = "yellow", no = my_palette[match(opinions, levels_vec)])
+  vertex_size <- max(10, 25 * (10 / n_nodes))
+  vertex_label <- ifelse(test = vertex_type, yes = paste("g", 1:ncol(bipartite), sep = ""), no = NA)
 
   # Plot with bipartite layout
   plot(g,
-       layout = layout_as_bipartite,
-       vertex.color = V(g)$color,
-       vertex.size = V(g)$size,
-       vertex.label = V(g)$label,
+       layout = igraph::layout_as_bipartite,
+       vertex.color = vertex_color,
+       vertex.size = vertex_size,
+       vertex.label = vertex_label,
        edge.color = grDevices::adjustcolor("gray45", alpha.f = 0.45),
        main = "Bipartite Graph")
 

@@ -13,8 +13,6 @@
 #'
 #' @name generate_bipartite
 #'
-#' @import Matrix
-#' @import igraph
 #' @importFrom stats rpois
 #'
 #' @param n Integer. Number of vertices in the first set (e.g., individuals).
@@ -77,7 +75,6 @@ generate_bipartite <- function(n, m, individual_weights, group_weights) {
   )
   return(bipartite_matrix)
 }
-
 
 
 

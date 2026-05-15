@@ -66,7 +66,7 @@ visual_cumulative_infections <- function(infection_events, final_time = NULL, ca
 
     lines(
       c(0, camp_times, x_max),
-      c(0, y_values, tail(y_values, 1)),
+      c(0, y_values, y_values[[length(y_values)]]),
       type = "s",
       lwd = 2,
       col = line_cols[[camp_label]]

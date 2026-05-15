@@ -9,9 +9,6 @@
 #'
 #' @param num_opinions Number of opinions
 #'
-#' @import Matrix
-#' @import igraph
-#'
 #' @return A numeric vector of length \code{num_opinions} around 0
 #'
 #' @details

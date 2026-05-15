@@ -8,9 +8,6 @@
 #'
 #' @name initialize_opinions_multi
 #'
-#' @import Matrix
-#' @import igraph
-#'
 #' @param n Integer. Number of individual vertices.
 #' @param num_opinions Integer. Number of distinct opinion states.
 #'

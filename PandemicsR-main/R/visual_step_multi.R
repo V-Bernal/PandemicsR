@@ -4,9 +4,6 @@
 #'
 #' @name visual_step_multi
 #'
-#' @import Matrix
-#' @import igraph
-#'
 #' @param opinions number of group vertices
 #' @param RIG RIG
 #' @param num_opinions number opinions
@@ -63,20 +60,20 @@ visual_step_multi <- function(RIG, opinions, num_opinions){
     return(invisible(NULL))
   }
 
-  rig_graph <- graph_from_adjacency_matrix(RIG, mode = "undirected", diag = FALSE)
+  rig_graph <- igraph::graph_from_adjacency_matrix(RIG, mode = "undirected", diag = FALSE)
 
   # Map opinions to colors
-  V(rig_graph)$color <- my_palette[match(opinions, levels_vec)]
+  vertex_color <- my_palette[match(opinions, levels_vec)]
 
   # Scale vertex size down for large networks
-  n_nodes <- vcount(rig_graph)
+  n_nodes <- igraph::vcount(rig_graph)
 
   plot(
     rig_graph,
-    vertex.color = V(rig_graph)$color,
+    vertex.color = vertex_color,
     vertex.size = max(10, 25 * (10 / n_nodes)),
     vertex.label = NA, #1:vcount(rig_graph),
-    layout = layout_in_circle(rig_graph, order = V(rig_graph)),
+    layout = igraph::layout_in_circle(rig_graph, order = igraph::V(rig_graph)),
     edge.color = "#555555",  # subtle edges
     edge.width = max(0.8, min(3, 120 / max(1, n_nodes))),
     edge.curved = 0#,  # straight edges are faster and cleaner here

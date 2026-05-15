@@ -194,6 +194,25 @@ sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries
 #'
 #' @name validate_hybrid_parameters
 #'
+#' @param n Number of individuals.
+#' @param m Number of groups.
+#' @param t_max Maximum Gillespie time horizon.
+#' @param lambda RIG weight parameter.
+#' @param c_param Schelling group-joining rate parameter.
+#' @param gamma_light Baseline voter rate for light opinion states.
+#' @param gamma_dark Baseline voter rate for dark opinion states.
+#' @param infected_dark_multiplier Multiplier applied to dark-state voter rates
+#'   when the individual is infected.
+#' @param beta_plus Schelling leave rate below threshold.
+#' @param beta_minus Schelling leave rate above threshold.
+#' @param T_threshold Minimum same-camp share to avoid the higher leave rate.
+#' @param num_opinions Number of opinion states. Supports 2 and 4.
+#' @param beta_red Infection rate for the red camp.
+#' @param beta_blue Infection rate for the blue camp.
+#' @param gamma_sir Recovery rate for the epidemic process.
+#' @param initial_infected_fraction Initial infected fraction, or a count if
+#'   greater than 1.
+#'
 #' @return A normalized list of scalar model parameters.
 #' @export
 validate_hybrid_parameters <- function(

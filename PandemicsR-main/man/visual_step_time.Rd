@@ -4,14 +4,14 @@
 \alias{visual_step_time}
 \title{visual_step_time}
 \usage{
-visual_step_time(frac_mat, num_opinions, n)
+visual_step_time(frac_mat, num_opinions, time_points = NULL)
 }
 \arguments{
 \item{frac_mat}{fraction of opinions}
 
 \item{num_opinions}{number of opinions}
 
-\item{n}{number of individuals}
+\item{time_points}{optional vector of recorded simulation times}
 }
 \description{
 visual_step_time

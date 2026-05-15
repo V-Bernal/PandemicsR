@@ -44,6 +44,46 @@ local({
     assert(all(diff(result$time_history) >= -1e-9), "Time history is not monotone.")
   }
 
+  assert_exact_group_consistency <- function(result) {
+    if (!identical(result$simulation_mode, "exact")) {
+      return(invisible(TRUE))
+    }
+
+    assert(length(result$members) == result$group_count, "Group membership count mismatch.")
+    assert(length(result$opinions) == result$population_size, "Opinion vector length mismatch.")
+
+    levels_vec <- get_levels_vec(result$num_opinions)
+    for (group_idx in seq_along(result$members)) {
+      ids <- result$members[[group_idx]]
+      assert(!anyDuplicated(ids), sprintf("Duplicate members in group %s.", group_idx))
+      assert(all(ids >= 1L & ids <= result$population_size), sprintf("Out-of-range member id in group %s.", group_idx))
+
+      group_state_counts <- tabulate(match(result$opinions[ids], levels_vec), nbins = length(levels_vec))
+      assert(sum(group_state_counts) == length(ids), sprintf("Group %s has unclassified opinion states.", group_idx))
+    }
+
+    invisible(TRUE)
+  }
+
+  assert_namespace_exports <- function(repo_root) {
+    namespace_file <- file.path(repo_root, "PandemicsR-main", "NAMESPACE")
+    namespace_lines <- readLines(namespace_file, warn = FALSE)
+    required_exports <- c(
+      "simulate_hybrid_model",
+      "simulate_hybrid_aggregate_model",
+      "visual_sir_time",
+      "visual_sir_camp_time",
+      "visual_cumulative_infections",
+      "visual_epidemic_camps",
+      "visual_opinion_shares"
+    )
+    missing_exports <- required_exports[
+      !paste0("export(", required_exports, ")") %in% namespace_lines
+    ]
+
+    assert(!length(missing_exports), paste("Missing package exports:", paste(missing_exports, collapse = ", ")))
+  }
+
   render_core_plots <- function(result) {
     png(tempfile(fileext = ".png"), width = 900, height = 600)
     visual_step_time(result$frac_mat, result$num_opinions, result$time_history)
@@ -96,6 +136,7 @@ local({
   set.seed(42)
   exact_result <- do.call(simulate_hybrid_model, with_args(n = 80, t_max = 30))
   assert_result_integrity(exact_result, "exact")
+  assert_exact_group_consistency(exact_result)
   assert(isTRUE(exact_result$graph_available), "Small exact run should keep graph outputs available.")
   assert(exact_result$final_time <= 30 + 1e-9, "Exact run exceeded the requested time horizon.")
   render_core_plots(exact_result)
@@ -110,6 +151,7 @@ local({
 
   default_result <- do.call(simulate_hybrid_model, with_args(n = 120))
   assert_result_integrity(default_result, "exact")
+  assert_exact_group_consistency(default_result)
   assert(isTRUE(default_result$graph_available), "Default run should keep graph outputs available.")
   assert(default_result$camp_attack_rate[["Red camp"]] > default_result$camp_attack_rate[["Blue camp"]], "Default parameters should make the red camp sicker.")
 
@@ -134,6 +176,7 @@ local({
     initial_infected_fraction = 0
   )
   assert_result_integrity(no_epidemic_result, "exact")
+  assert_exact_group_consistency(no_epidemic_result)
   assert_close(no_epidemic_result$overall_attack_rate, 0, 1e-9, "Zero-epidemic run should have zero attack rate.")
   render_core_plots(no_epidemic_result)
 
@@ -159,6 +202,7 @@ local({
     error = identity
   )
   assert(inherits(invalid_result, "error"), "Invalid m > n parameters should fail fast.")
+  assert_namespace_exports(repo_root)
 
   app_env <- new.env(parent = globalenv())
   source("app.R", local = app_env)

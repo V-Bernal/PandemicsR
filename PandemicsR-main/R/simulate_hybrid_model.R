@@ -457,7 +457,7 @@ simulate_hybrid_model <- function(
       break
     }
 
-    dt <- rexp(1, lambda_tot)
+    dt <- stats::rexp(1, lambda_tot)
     t <- t + dt
     if (t >= t_max) {
       t <- t_max
@@ -557,7 +557,7 @@ simulate_hybrid_model <- function(
   opinion_history <- cbind(opinion_history, opinions)
   final_frac <- sum_state_fraction(opinions)
   final_sir <- sum_sir_counts(sir_counts)
-  last_time <- tail(unlist(time_history, use.names = FALSE), 1L)
+  last_time <- time_history[[length(time_history)]]
   last_frac <- frac_history[[length(frac_history)]]
   last_sir <- sir_history[[length(sir_history)]]
 
