@@ -58,7 +58,10 @@ generate_bipartite <- function(n, m, individual_weights, group_weights) {
   expected_edges <- outer(individual_weights, group_weights,
                           FUN = function(x, y) (x * y) / sum(group_weights))
   # Generate Poisson multi-edges
-  bipartite_matrix <- Matrix::Matrix(rpois(n * m, lambda = expected_edges),
+  x <- rpois(n * m, lambda = expected_edges)
+  x[x > 0] <- 1  # collapse multi-edges
+
+  bipartite_matrix <- Matrix::Matrix(x,
                                      nrow = n, ncol = m, sparse = TRUE)
   return(bipartite_matrix)
 }
