@@ -20,6 +20,10 @@
 #' @export
 visual_step_time <- function(frac_mat, num_opinions){
 
+  # increase top margin
+  op <- par(mar = c(5, 4, 6, 2))  # bottom, left, top, right
+
+
   levels_vec <- get_levels_vec(num_opinions)
   my_palette <- get_palette(num_opinions)
 
@@ -27,27 +31,31 @@ visual_step_time <- function(frac_mat, num_opinions){
   time_vals <- frac_mat[,1]
 
   # opinion fraction columns
-  frac_vals <- frac_mat[,-1]
+  frac_vals <- frac_mat[, -1, drop = FALSE]
 
   plot.new()
 
   plot.window(
-    xlim = range(time_vals),
+    xlim =  c(min(time_vals), max(time_vals)) ,
     ylim = c(0,1),
-    xaxt = "n"
-  )
+    xaxt = "n", bty='L')
 
-  axis(1)
+  # evenly spaced tick marks
+  ticks <- pretty(time_vals, n = 6)
+
+  axis(1,
+       at = ticks,
+       labels = round(ticks, 2))
   axis(2)
 
   box()
 
   title(
-    xlab = "Gillespie time",
+    xlab = "Time",
     ylab = "Voter Fraction"
   )
 
-  for (k in 1:num_opinions) {
+  for (k in seq_len(ncol(frac_vals))) {
 
     lines(
       x = time_vals,

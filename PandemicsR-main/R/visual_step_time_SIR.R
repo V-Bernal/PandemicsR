@@ -25,7 +25,8 @@ visual_step_time_SIR <- function(x){
 
   plot.new()
   #plot.window(xlim = c(1, nrow(x)), ylim = c(0, 1), xaxt = "n", bty='L')  # suppress x-axis)
-  plot.window(xlim = c(min(time), max(time)), ylim = c(0, 1), xaxt = "n", bty='L')  # suppress x-axis)
+  plot.window(xlim = c(min(time), max(time)),
+              ylim = c(0, 1), xaxt = "n", bty='L')  # suppress x-axis)
 
   # evenly spaced tick marks
   ticks <- pretty(time, n = 6)
@@ -36,6 +37,7 @@ visual_step_time_SIR <- function(x){
 
   #axis(1, at = c(1: nrow(x)), labels = (1:nrow(x)))
   axis(2)
+
   box()
   title(xlab = "Time", ylab = "Fraction SIR")
 
