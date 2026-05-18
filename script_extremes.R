@@ -86,8 +86,8 @@ while (t < t_max) {
   valid <- Tot >= 2
   voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
   
-  # Each missing individual-group edge joins at rate c/m.
-  join_term <- (c_param / m) * (n - Tot)
+  # Each group join rate uses the normalized share of true outsiders.
+  join_term <- (c_param / m) * lengths(outsiders) / n
   
   # The rate of leave a group is B+ or B- depending on the thershold
   frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
@@ -150,7 +150,7 @@ while (t < t_max) {
   move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
   if (move==1 && Ri_g>0) { # Red to Blue
-    chosen <- sample(red_members[[group_i]],1)
+    chosen <- red_members[[group_i]][sample.int(length(red_members[[group_i]]), 1L)]
     opinions[chosen] <- +1
     # update every group where individual belongs
     for (g in groups_of_individual[[chosen]]) {
@@ -165,7 +165,7 @@ while (t < t_max) {
     }
 
   } else if (move==2 && Bi_g>0) { # Blue to Red
-    chosen <- sample(blue_members[[group_i]],1)
+    chosen <- blue_members[[group_i]][sample.int(length(blue_members[[group_i]]), 1L)]
     opinions[chosen] <- -1
     # update every group where individual belongs
     for (g in groups_of_individual[[chosen]]) {
@@ -230,7 +230,7 @@ while (t < t_max) {
     moderates <- members[[group_i]][opinions[members[[group_i]]] == -1]
     extremes <- members[[group_i]][opinions[members[[group_i]]] == -2]
     if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
-      chosen_moderate <- sample(moderates, 1)
+      chosen_moderate <- moderates[sample.int(length(moderates), 1L)]
       opinions[chosen_moderate] <- -2
 
       # UPDATE ALL GROUPS OF THE INDIVIDUAL
@@ -250,7 +250,7 @@ while (t < t_max) {
     moderates <- members[[group_i]][opinions[members[[group_i]]] == 1]
     extremes <- members[[group_i]][opinions[members[[group_i]]] == 2]
     if (length(moderates) > 0 && length(extremes) > 0) { #check if we need length(extremes) > 0
-      chosen_moderate <- sample(moderates, 1)
+      chosen_moderate <- moderates[sample.int(length(moderates), 1L)]
       opinions[chosen_moderate] <- 2
 
       # UPDATE ALL GROUPS OF THE INDIVIDUAL

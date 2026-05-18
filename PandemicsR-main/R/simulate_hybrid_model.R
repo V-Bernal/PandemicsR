@@ -273,7 +273,7 @@ simulate_hybrid_model <- function(
       return(ids[[sample.int(length(ids), 1L)]])
     }
 
-    sample(ids, 1L, prob = weights)
+    sample_one(ids, prob = weights)
   }
 
   sample_from_compartment_state <- function(comp_idx, state_idx) {
@@ -286,7 +286,7 @@ simulate_hybrid_model <- function(
       return(ids)
     }
 
-    sample(ids, 1L)
+    sample_one(ids)
   }
 
   move_opinion <- function(chosen, new_state_idx) {
@@ -427,7 +427,7 @@ simulate_hybrid_model <- function(
     leave_blue_rate <- numeric(m)
 
     if (run_schelling) {
-      join_term <- (c_param / m) * pmax(0, n - totals)
+      join_term <- (c_param / m) * pmax(0, n - totals) / n
       red_frac <- ifelse(totals > 0L, red_counts / totals, 0)
       blue_frac <- ifelse(totals > 0L, blue_counts / totals, 0)
       leave_red_rate <- ifelse(red_frac < T_threshold, beta_plus * red_counts, beta_minus * red_counts)

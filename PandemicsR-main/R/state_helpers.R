@@ -128,6 +128,21 @@ remove_value_fast <- function(vec, value) {
   vec[-last_idx]
 }
 
+sample_one <- function(x, prob = NULL) {
+  if (!length(x)) {
+    return(NA)
+  }
+
+  if (!is.null(prob)) {
+    prob <- as.numeric(prob)
+    if (length(prob) != length(x) || !all(is.finite(prob)) || sum(prob) <= 0) {
+      return(NA)
+    }
+  }
+
+  x[[sample.int(length(x), 1L, prob = prob)]]
+}
+
 #' Reconstruct a Bipartite Matrix From Membership Lists
 #'
 #' @author OpenAI Codex
@@ -185,7 +200,7 @@ sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries
     return(available)
   }
 
-  sample(available, 1L)
+  sample_one(available)
 }
 
 #' Validate Hybrid Model Parameters

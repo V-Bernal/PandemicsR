@@ -84,6 +84,20 @@ local({
     assert(!length(missing_exports), paste("Missing package exports:", paste(missing_exports, collapse = ", ")))
   }
 
+  assert_sampling_and_graph_regressions <- function() {
+    assert(identical(sample_one(c(10L)), 10L), "Length-one numeric sampling must return the vector element.")
+    assert(identical(sample_one(c(10L), prob = 1), 10L), "Weighted length-one sampling must return the vector element.")
+
+    set.seed(100)
+    binary_graph <- generate_bipartite(
+      n = 25,
+      m = 4,
+      individual_weights = rep(20, 25),
+      group_weights = rep(20, 4)
+    )
+    assert(all(binary_graph@x %in% 1), "Bipartite generator produced non-binary memberships.")
+  }
+
   render_core_plots <- function(result) {
     png(tempfile(fileext = ".png"), width = 900, height = 600)
     visual_step_time(result$frac_mat, result$num_opinions, result$time_history)
@@ -203,6 +217,7 @@ local({
   )
   assert(inherits(invalid_result, "error"), "Invalid m > n parameters should fail fast.")
   assert_namespace_exports(repo_root)
+  assert_sampling_and_graph_regressions()
 
   app_env <- new.env(parent = globalenv())
   source("app.R", local = app_env)

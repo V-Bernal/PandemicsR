@@ -91,7 +91,7 @@ while (t < t_max) {
   # Each missing individual-group edge joins at rate c/m.
   join_term <- numeric(m)
   if (run_schelling) {
-    join_term <- (c_param / m) * (n - Tot)
+    join_term <- (c_param / m) * pmax(0, n - Tot) / n
   }
   
   # The rate of leave a group is B+ or B- depending on the thershold
@@ -133,7 +133,7 @@ while (t < t_max) {
   move <- sample(1:length(rates_vec), 1L, prob = rates_vec / sum(rates_vec))
 
   if (move==1 && Ri_g>0) { # Red to Blue
-    chosen <- sample(red_members[[group_i]],1)
+    chosen <- red_members[[group_i]][sample.int(length(red_members[[group_i]]), 1L)]
     opinions[chosen] <- +1
     # update every group where individual belongs
     for (g in groups_of_individual[[chosen]]) {
@@ -148,7 +148,7 @@ while (t < t_max) {
     }
 
   } else if (move==2 && Bi_g>0) { # Blue to Red
-    chosen <- sample(blue_members[[group_i]],1)
+    chosen <- blue_members[[group_i]][sample.int(length(blue_members[[group_i]]), 1L)]
     opinions[chosen] <- -1
     # update every group where individual belongs
     for (g in groups_of_individual[[chosen]]) {

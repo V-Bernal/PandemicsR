@@ -5,9 +5,9 @@
 #' The expected number of edges between each pair of nodes is determined
 #' by their associated weights.
 #'
-#' Each entry in the resulting matrix represents the number of connections
-#' (multi-edges) between an individual and a group, drawn from a Poisson
-#' distribution. This allows for weighted or multi-edge bipartite graphs.
+#' Each entry in the resulting matrix represents binary membership between
+#' an individual and a group. Poisson draws greater than zero are collapsed
+#' to one.
 #'
 #' @author Victor Bernal
 #'
@@ -24,18 +24,18 @@
 #'
 #' @return A sparse matrix of class \code{dgCMatrix} with dimension
 #' \code{n x m}, representing the bipartite adjacency matrix. Entries are
-#' non-negative integers corresponding to the number of edges between nodes.
+#' binary, with one indicating membership.
 #'
 #' @details
 #' The expected number of edges between individual \eqn{i} and group \eqn{j}
 #' is given by:
 #' \deqn{\lambda_{ij} = \frac{w_i \cdot g_j}{\sum_k g_k}}
 #' where \eqn{w_i} and \eqn{g_j} are the individual and group weights,
-#' respectively. Each entry is then sampled as:
+#' respectively. Each entry is then sampled and binarized as:
 #' \deqn{B_{ij} \sim \mathrm{Poisson}(\lambda_{ij})}
 #'
-#' This formulation produces a random bipartite multigraph consistent with
-#' weighted random intersection models.
+#' This formulation produces a binary random bipartite graph consistent with
+#' weighted random intersection membership models.
 #' @examples
 #' #---------------------------------
 #' # Generate a bipartite
@@ -64,10 +64,13 @@ generate_bipartite <- function(n, m, individual_weights, group_weights) {
 
   # Expected Poisson edges
   expected_edges <- tcrossprod(individual_weights, group_weights) / total_group_weight
-  # Generate Poisson multi-edges
+  # Generate Poisson edges and collapse multi-edges to binary membership.
+  edge_counts <- rpois(length(expected_edges), lambda = c(expected_edges))
+  edge_counts[edge_counts > 0L] <- 1L
+
   bipartite_matrix <- Matrix::Matrix(
     matrix(
-      rpois(length(expected_edges), lambda = c(expected_edges)),
+      edge_counts,
       nrow = n,
       ncol = m
     ),
@@ -75,6 +78,4 @@ generate_bipartite <- function(n, m, individual_weights, group_weights) {
   )
   return(bipartite_matrix)
 }
-
-
 
