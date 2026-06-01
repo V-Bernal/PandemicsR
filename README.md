@@ -1,5 +1,5 @@
 # PandemicsR
-Voter and Schelling combined model
+Voter Schelling and Epidemic model
 
 ## Install R package from Github 
 ```{r}
