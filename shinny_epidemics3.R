@@ -36,7 +36,12 @@ ui <- fluidPage(
         h4("Schelling model"),
         checkboxInput("runSchelling", "Schelling model", value = FALSE),
 
-        sliderInput("c_param", "Schelling: Edge addition rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
+        sliderInput("c_param", "Schelling: join rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
+        
+        h6("scale join rate"),
+        checkboxInput("scaled_n", "scaled by N", value = TRUE),
+        checkboxInput("scaled_m", "scaled by m", value = TRUE),
+        
         sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
         sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3)
@@ -47,21 +52,23 @@ ui <- fluidPage(
         h4("Voter's model"),
         checkboxInput("runVoter", "Voter model", value = FALSE),
         #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
-        sliderInput("gamma", "Voter: gamma", min = 0, step = 0.01, max = 100, value = 5),
+        sliderInput("gamma", "Voter: gamma", min = 0, step = 0.1, max = 100, value = 5),
         sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
 
         # Section 4: Extremes
         #h5("Extremes"),
         sliderInput("alpha", "radicalization rate", min = 0, step = 0.01, max = 1, value = 0.1),
         sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.01, max = 1, value = 0),
-        h6("*Stubbornnes: set deradicalization to zero")
+        h6("*Stubbornnes: set deradicalization to zero"),
+        sliderInput("alpha0", "Spontaneous (de)-radicalization rate", min = 0, step = 0.01, max = 1, value = 0)
+        
       ),
 
       # Section 5: Epidemics
       wellPanel(
         h4("Epidemics model"),
-        checkboxInput("runEpidemic", "Epidemic model", value = TRUE),
-        sliderInput("I0", "Number of Infected", min = 1, step = 1, max = 20, value = 5),
+        checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
+        sliderInput("I0", "Fraction of Infected", min = 0, step = 0.01, max = 1, value = 0),
         sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
         sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
@@ -188,6 +195,7 @@ server <- function(input, output, session) {
     # radicalization
     alpha <- input$alpha
     alpha_deradicalization <- input$alpha_deradicalization
+    alpha0<- input$alpha0 # spontaneous radicalization
 
     #==========================
     # 2. Model parameters
@@ -253,8 +261,10 @@ server <- function(input, output, session) {
 
     #----- NEW
     event_counter <- 0
-    record_every <- max(1, floor( t_max/ 10))
+    record_every <- t_max / 500
+    max_records <- ceiling(t_max / record_every) + 1
     last_record_time <- 0
+    
     members0 <- members
 
     # group members
@@ -314,7 +324,7 @@ server <- function(input, output, session) {
       total_blue <- sum(opinions > 0)
 
       # Initial Parameters (NEW)
-      I0 <- input$I0 # number of initial infected
+      I0 <- floor(input$I0 * n) # number of initial infected
       beta_red  <- input$beta_red
       beta_blue <- input$beta_blue # infection rate blue opinion
       gamma_epi <- input$gamma_epi #recovery rate
@@ -408,12 +418,19 @@ server <- function(input, output, session) {
 
     while (t < t_max) {
 
+      # stop if all infected
+      if (isTRUE(input$runEpidemic) && all(epi != I)) {
+        stop_reason <- "No individual is infected (epidemic ended)"
+        break
+      }
+      
       # stopping time
       if (isTRUE(input$runEpidemic) && all(epi == R)) {
         stop_reason <- "All individuals recovered (epidemic ended)"
         break
       }
-
+      
+      # stopping time
       if (num_opinions == 4 && all(opinions %in% c(-2, 2))) {
         stop_reason <- "Full polarization (all extreme opinions)"
         break
@@ -431,7 +448,14 @@ server <- function(input, output, session) {
       # joining a group rates
       ##==========================
       # joining a group for someone not yet part of a group is c/m.
-      join_term <- (c_param / m) * sapply(outsiders, length)/n #(n - Tot)/n
+      join_term <- (c_param) * sapply(outsiders, length) #/n #(n - Tot)/n
+      
+      if (isTRUE(input$scaled_n)) {
+        join_term <- join_term/n
+      }
+      if (isTRUE(input$scaled_m)) {
+        join_term <- join_term/m
+      }
 
       #==========================
       # leaving a group rates
@@ -507,11 +531,11 @@ server <- function(input, output, session) {
 
       factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
 
-      rate_radicalize_red  <- alpha * Ei_red  * Ri * factor
-      rate_radicalize_blue <- alpha * Ei_blue * Bi * factor
+      rate_radicalize_red  <- (alpha0 + alpha * Ei_red * factor ) * Ri 
+      rate_radicalize_blue <- (alpha0 + alpha * Ei_blue * factor )* Bi 
 
-      rate_deradicalize_red  <- alpha_deradicalization * Ei_red  * Ri * factor
-      rate_deradicalize_blue <- alpha_deradicalization * Ei_blue * Bi * factor
+      rate_deradicalize_red  <- (alpha0 + alpha_deradicalization * Ei_red * factor) * Ri 
+      rate_deradicalize_blue <- (alpha0 + alpha_deradicalization * Ei_blue * factor) * Bi
 
       frac_red_e  <- ifelse(Tot_g > 0, Ei_red  / Tot_g, 0)
       frac_blue_e <- ifelse(Tot_g > 0, Ei_blue / Tot_g, 0)
@@ -784,7 +808,8 @@ server <- function(input, output, session) {
           Ri[group_i] <- Ri[group_i] - 1
           rig_dirty <- TRUE
 
-          in_group[chosen]<- chosen %in% members
+          #in_group[chosen]<- chosen %in% members
+          in_group[chosen] <- length(groups_of_individual[[chosen]]) > 0
 
         } else if (move == 5 && Bi_g > 0) {
           # Remove internal moderate blue
@@ -803,7 +828,8 @@ server <- function(input, output, session) {
           Bi[group_i] <- Bi[group_i]-1
           rig_dirty <- TRUE
 
-          in_group[chosen]<- chosen %in% members
+          #in_group[chosen]<- chosen %in% members
+          in_group[chosen] <- length(groups_of_individual[[chosen]]) > 0
 
         } else if (move == 6 &&
                    Ei_red[group_i] > 0 &&
@@ -940,7 +966,8 @@ server <- function(input, output, session) {
           Ei_red[group_i] <- Ei_red[group_i] - 1
 
           rig_dirty <- TRUE
-          in_group[chosen]<- chosen %in% members
+          #in_group[chosen]<- chosen %in% members
+          in_group[chosen] <- length(groups_of_individual[[chosen]]) > 0
 
         } else if (move == 11 && (Ei_blue[group_i]) > 0 ) {
           # Remove internal extreme blue
@@ -958,7 +985,8 @@ server <- function(input, output, session) {
           Ei_blue[group_i] <- Ei_blue[group_i] - 1
 
           rig_dirty <- TRUE
-          in_group[chosen]<- chosen %in% members
+          #in_group[chosen]<- chosen %in% members
+          in_group[chosen] <- length(groups_of_individual[[chosen]]) > 0
 
           #-------------------------------
         }
