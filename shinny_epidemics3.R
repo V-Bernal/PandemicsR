@@ -27,7 +27,7 @@ ui <- fluidPage(
         h4("Network parameters"),
         numericInput("n", "Number of individuals", value = 15, min = 5),
         numericInput("m", "Number of groups", value = 3, min = 2),
-        numericInput("timesteps", "Gillespie Iterations", value = 100, max = 200),
+        numericInput("timesteps", "Gillespie Iterations", value = 100, max = 20000),
         numericInput("lambda", "RIG weight parameter lambda", value = 1, min = 0)
       ),
 
@@ -409,8 +409,16 @@ server <- function(input, output, session) {
       R_hist_out[1] <- c(sum(epi[outsiders_all] == R))
 
     }
-
-
+    
+    #===============
+    # Progress bar
+    #===============
+      withProgress(
+        message = "Running simulation",
+        detail = "Starting...",
+        value = 0,
+        {
+          
     #==========================
     # Gillespie algorithm
     #==========================
@@ -444,18 +452,20 @@ server <- function(input, output, session) {
       valid <- (Ri > 0 & Bi > 0) #Tot >= 2
       voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
 
+
       #==========================
       # joining a group rates
       ##==========================
       # joining a group for someone not yet part of a group is c/m.
-      join_term <- (c_param) * sapply(outsiders, length) #/n #(n - Tot)/n
+      #join_term <- c_param * sapply(outsiders, length) #/n #(n - Tot)/n
+      join_term <- c_param * sapply(outsiders, length) * sapply(members, length) /n #(n - Tot)/n
       
-      if (isTRUE(input$scaled_n)) {
-        join_term <- join_term/n
-      }
-      if (isTRUE(input$scaled_m)) {
-        join_term <- join_term/m
-      }
+      # if (isTRUE(input$scaled_n)) {
+      #   join_term <- join_term/n
+      # }
+      # if (isTRUE(input$scaled_m)) {
+      #   join_term <- join_term/m
+      # }
 
       #==========================
       # leaving a group rates
@@ -464,8 +474,10 @@ server <- function(input, output, session) {
       frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
       frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
 
-      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+      # leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+      # leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * frac_red, beta_minus * frac_red)
+      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * frac_blue, beta_minus * frac_blue)
 
       #==========================
       # Epidemic rates (NEW)
@@ -1087,12 +1099,25 @@ server <- function(input, output, session) {
       }
 
       # ---- record step ----
+      
       event_counter <- event_counter + 1
 
       if (t - last_record_time >= record_every) {
 
 
         last_record_time <- t
+        
+        
+        # progress
+        setProgress(
+          value = min(t / t_max, 1),
+          detail = sprintf(
+            "t = %.2f / %.2f | events = %d",
+            t,
+            t_max,
+            event_counter
+          )
+        )
 
       #if ( (event_counter %% record_every == 0) && event_counter<t_max) {
 
@@ -1162,10 +1187,11 @@ server <- function(input, output, session) {
         }
 
       }
-
-      # end gillespie
-
-    }
+    
+    # end gillespie
+      
+    }       }
+      ) 
 
     #=========================
     # Opinions
