@@ -27,7 +27,7 @@ ui <- fluidPage(
         h4("Network parameters"),
         numericInput("n", "Number of individuals", value = 15, min = 5),
         numericInput("m", "Number of groups", value = 3, min = 2),
-        numericInput("timesteps", "Gillespie Iterations", value = 100, max = 20000),
+        numericInput("timesteps", "Gillespie Iterations", value = 100, max = 10000),
         numericInput("lambda", "RIG weight parameter lambda", value = 1, min = 0)
       ),
 
@@ -37,11 +37,11 @@ ui <- fluidPage(
         checkboxInput("runSchelling", "Schelling model", value = FALSE),
 
         sliderInput("c_param", "Schelling: join rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
-        
-        h6("scale join rate"),
-        checkboxInput("scaled_n", "scaled by N", value = TRUE),
-        checkboxInput("scaled_m", "scaled by m", value = TRUE),
-        
+
+        h6("*to scale the join rate tick the box"),
+        checkboxInput("scaled_n", "scaled by N", value = FALSE),
+        checkboxInput("scaled_m", "scaled by m", value = FALSE),
+
         sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
         sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3)
@@ -59,16 +59,16 @@ ui <- fluidPage(
         #h5("Extremes"),
         sliderInput("alpha", "radicalization rate", min = 0, step = 0.01, max = 1, value = 0.1),
         sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.01, max = 1, value = 0),
-        h6("*Stubbornnes: set deradicalization to zero"),
-        sliderInput("alpha0", "Spontaneous (de)-radicalization rate", min = 0, step = 0.01, max = 1, value = 0)
-        
+        h6("* for stubborn opinions: set de-radicalization to zero"),
+        sliderInput("alpha0", "spontaneous (de)-radicalization rate", min = 0, step = 0.01, max = 1, value = 0)
+
       ),
 
       # Section 5: Epidemics
       wellPanel(
         h4("Epidemics model"),
         checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
-        sliderInput("I0", "Fraction of Infected", min = 0, step = 0.01, max = 1, value = 0),
+        sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.01),
         sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
         sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
@@ -210,7 +210,7 @@ server <- function(input, output, session) {
     RIG <- RIG0; bipartite <- B0
 
     #==========================
-    # Model trackers
+    # Opinion trackers
     #==========================
     # Voter tracker
     opinions <- initialize_opinions_multi(n, num_opinions)
@@ -242,8 +242,9 @@ server <- function(input, output, session) {
     Ri <- sapply(red_members, length)
     Bi <- sapply(blue_members, length)
 
-    #-----------------
-    # extremes
+    #====================
+    # Group tracker extremes
+    #====================
     Ei_red  <- integer(m)
     Ei_blue <- integer(m)
 
@@ -259,26 +260,24 @@ server <- function(input, output, session) {
 
     rig_dirty <- FALSE
 
-    #----- NEW
-    event_counter <- 0
-    record_every <- t_max / 500
-    max_records <- ceiling(t_max / record_every) + 1
-    last_record_time <- 0
-    
+    #====================
+    # Schelling trackers
+    #====================
     members0 <- members
-
-    # group members
     all_group_members <- unique(unlist(members))
     #all_group_members <- which(membership_count > 0)
-
     # Isolated Outsiders all
     outsiders_all <- setdiff(seq_len(n), all_group_members)
 
+    #====================
+    # event trackers
+    #====================
+    event_counter <- 0
+    record_every <- t_max/500
+    max_records <- ceiling(t_max / record_every) + 1
+    last_record_time <- 0
 
-    #--time of infection----------
-    # Initial time
     record_idx <-  1
-
     time_hist <- matrix(NA,
                         nrow = 1,
                         ncol = max_records)
@@ -302,7 +301,7 @@ server <- function(input, output, session) {
     })
 
     #=====================
-    # Initialize epidemic (O(1) structure)
+    # Epidemic trackers (O(1) structure)
     #=====================
     SIR_df <- integer(max_records) ;SIR_df_opinion_red <- integer(max_records) ;
     SIR_df_opinion_blue <- integer(max_records) ;
@@ -310,8 +309,6 @@ server <- function(input, output, session) {
     inf_time <- c() ; inf_camp <- c() ;
 
     in_group <- logical(n)
-    #is_member <- logical(n)
-    #membership_count <- integer(n)
 
     if (isTRUE(input$runEpidemic)) {
       #==========================
@@ -409,7 +406,7 @@ server <- function(input, output, session) {
       R_hist_out[1] <- c(sum(epi[outsiders_all] == R))
 
     }
-    
+
     #===============
     # Progress bar
     #===============
@@ -418,7 +415,7 @@ server <- function(input, output, session) {
         detail = "Starting...",
         value = 0,
         {
-          
+
     #==========================
     # Gillespie algorithm
     #==========================
@@ -426,58 +423,78 @@ server <- function(input, output, session) {
 
     while (t < t_max) {
 
+      #===================
+      # Stopping criteria
+      #===================
+
       # stop if all infected
       if (isTRUE(input$runEpidemic) && all(epi != I)) {
         stop_reason <- "No individual is infected (epidemic ended)"
         break
       }
-      
+
       # stopping time
       if (isTRUE(input$runEpidemic) && all(epi == R)) {
         stop_reason <- "All individuals recovered (epidemic ended)"
         break
       }
-      
+
       # stopping time
       if (num_opinions == 4 && all(opinions %in% c(-2, 2))) {
         stop_reason <- "Full polarization (all extreme opinions)"
         break
       }
 
+      #================
+      # enabled moves
+      #================
+      enabled_moves <- c()#numeric(11)
+
+
       #==========================
       # Voter's rate of interaction among moderates
       #==========================
-      Tot <- Ri + Bi
       voter_term <- numeric(m)
-      valid <- (Ri > 0 & Bi > 0) #Tot >= 2
-      voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+      Tot <- Ri + Bi
 
+      if (isTRUE(input$runVoter)) {
+        enabled_moves <- c(enabled_moves, c(1, 2))
+        #voter_term <- numeric(m)
+        valid <- (Ri > 0 & Bi > 0) #Tot >= 2
+        voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
 
-      #==========================
-      # joining a group rates
-      ##==========================
-      # joining a group for someone not yet part of a group is c/m.
-      #join_term <- c_param * sapply(outsiders, length) #/n #(n - Tot)/n
-      join_term <- c_param * sapply(outsiders, length) * sapply(members, length) /n #(n - Tot)/n
-      
-      # if (isTRUE(input$scaled_n)) {
-      #   join_term <- join_term/n
-      # }
-      # if (isTRUE(input$scaled_m)) {
-      #   join_term <- join_term/m
-      # }
+      }
 
       #==========================
-      # leaving a group rates
+      # Schelling rates
       ##==========================
-      # The rate of leaving a group is B+ or B- depending on the threshold
-      frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
-      frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
+      join_term <- numeric(m)
+      leaveR_rate <- numeric(m)
+      leaveB_rate <- numeric(m)
 
-      # leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
-      # leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
-      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * frac_red, beta_minus * frac_red)
-      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * frac_blue, beta_minus * frac_blue)
+      if (isTRUE(input$runSchelling)) {
+
+        enabled_moves <- c(enabled_moves, c(3,4,5))
+
+        # joining a group
+        join_term <- c_param * sapply(outsiders, length) * sapply(members, length)
+
+        if (isTRUE(input$scaled_n)) {
+          join_term <- join_term/n
+        }
+        if (isTRUE(input$scaled_m)) {
+          join_term <- join_term/m
+        }
+
+        # leaving a group rates
+        # The rate of leaving a group is B+ or B- depending on the threshold
+        frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
+        frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
+
+        leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+        leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+
+      }
 
       #==========================
       # Epidemic rates (NEW)
@@ -493,17 +510,12 @@ server <- function(input, output, session) {
         # Opinion camp-based infection rates
         beta_vec <- ifelse(opinions < 0, beta_red, beta_blue)
 
+        # Aggregate epidemic rates
+
         # Infection: only for S individuals
-        ##infection_rates <- ifelse(epi == S, beta_vec * prevalence, 0)
+        infection_rate_tot <- (I_count / n) * sum(beta_vec[S_nodes])
 
         # Recovery: only for I individuals
-        ##recovery_rates <- ifelse(epi == I, gamma_epi, 0)
-
-        # Aggregate epidemic rates
-        #infection_rate_tot <- sum(infection_rates)
-        #recovery_rate_tot  <- sum(recovery_rates)
-
-        infection_rate_tot <- (I_count / n) * sum(beta_vec[S_nodes])
         recovery_rate_tot  <- gamma_epi * I_count
 
       }
@@ -511,56 +523,52 @@ server <- function(input, output, session) {
       #==========================
       # New: de-radicalize rates
       #==========================
-      # rate_radicalize_red  <- numeric(m)
-      # rate_radicalize_blue <- numeric(m)
-      # rate_deradicalize_red <- numeric(m)
-      # rate_deradicalize_blue <- numeric(m)
-      # leaveR_rate_extreme <- numeric(m)
-      # leaveB_rate_extreme <- numeric(m)
-      #
-      # for (g in seq_len(m)) {
-      #   num_extreme_red   <- sum(opinions[members[[g]]] == -2)
-      #   num_extreme_blue  <- sum(opinions[members[[g]]] ==  2)
-      #   num_moderate_red  <- sum(opinions[members[[g]]] == -1)
-      #   num_moderate_blue <- sum(opinions[members[[g]]] ==  1)
-      #
-      #   Tot_g <- length(members[[g]])
-      #   factor <- if (Tot_g > 0) 1 / Tot_g else 0 # avoid NAN or division by zero
-      #
-      #   rate_radicalize_red[g]  <- alpha * num_extreme_red  * num_moderate_red  * factor
-      #   rate_radicalize_blue[g] <- alpha * num_extreme_blue * num_moderate_blue * factor
-      #
-      #   rate_deradicalize_red[g]  <- alpha_deradicalization * num_extreme_red  * num_moderate_red  * factor
-      #   rate_deradicalize_blue[g] <- alpha_deradicalization * num_extreme_blue * num_moderate_blue * factor
-      #
-      #   frac_red_e <- ifelse(Tot_g > 0, num_extreme_red / Tot_g, 0)
-      #   frac_blue_e <- ifelse(Tot_g > 0, num_extreme_blue / Tot_g, 0)
-      #
-      #   leaveR_rate_extreme[g] <- ifelse(frac_red_e < T_threshold, beta_plus * num_extreme_red, beta_minus * num_extreme_red)
-      #   leaveB_rate_extreme[g] <- ifelse(frac_blue_e < T_threshold, beta_plus * num_extreme_blue, beta_minus * num_extreme_blue)
-      # }
-      Tot_g <- sapply(members, length)
 
-      factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
+      rate_radicalize_red  <- numeric(m)
+      rate_radicalize_blue <- numeric(m)
+      rate_deradicalize_red <- numeric(m)
+      rate_deradicalize_blue <- numeric(m)
 
-      rate_radicalize_red  <- (alpha0 + alpha * Ei_red * factor ) * Ri 
-      rate_radicalize_blue <- (alpha0 + alpha * Ei_blue * factor )* Bi 
+      if (num_opinions == 4 && isTRUE(input$runVoter)) {
 
-      rate_deradicalize_red  <- (alpha0 + alpha_deradicalization * Ei_red * factor) * Ri 
-      rate_deradicalize_blue <- (alpha0 + alpha_deradicalization * Ei_blue * factor) * Bi
+        enabled_moves <- c(enabled_moves, c(6, 7, 8, 9))
+        Tot_g <- sapply(members, length)
 
-      frac_red_e  <- ifelse(Tot_g > 0, Ei_red  / Tot_g, 0)
-      frac_blue_e <- ifelse(Tot_g > 0, Ei_blue / Tot_g, 0)
+        factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
 
-      leaveR_rate_extreme <-
-        ifelse(frac_red_e < T_threshold,
-               beta_plus * Ei_red,
-               beta_minus * Ei_red)
+        rate_radicalize_red  <- (alpha0 + alpha * Ei_red * factor ) * Ri
+        rate_radicalize_blue <- (alpha0 + alpha * Ei_blue * factor )* Bi
 
-      leaveB_rate_extreme <-
-        ifelse(frac_blue_e < T_threshold,
-               beta_plus * Ei_blue,
-               beta_minus * Ei_blue)
+        rate_deradicalize_red  <- (alpha0 + alpha_deradicalization * Ei_red * factor) * Ri
+        rate_deradicalize_blue <- (alpha0 + alpha_deradicalization * Ei_blue * factor) * Bi
+
+        }
+
+      #==========================
+      # New: leave rates radicals
+      #==========================
+
+      leaveR_rate_extreme <- numeric(m)
+      leaveB_rate_extreme <- numeric(m)
+
+      if (num_opinions == 4 && isTRUE(input$runSchelling)) {
+
+        enabled_moves <- c(enabled_moves, c(10, 11))
+
+        frac_red_e  <- ifelse(Tot_g > 0, Ei_red  / Tot_g, 0)
+        frac_blue_e <- ifelse(Tot_g > 0, Ei_blue / Tot_g, 0)
+
+        leaveR_rate_extreme <-
+          ifelse(frac_red_e < T_threshold,
+                 beta_plus * Ei_red,
+                 beta_minus * Ei_red)
+
+        leaveB_rate_extreme <-
+          ifelse(frac_blue_e < T_threshold,
+                 beta_plus * Ei_blue,
+                 beta_minus * Ei_blue)
+
+      }
 
       #==========================
       # Global state rate
@@ -578,29 +586,6 @@ server <- function(input, output, session) {
       lambda_tot <- social_rate + epi_rate
 
       if (lambda_tot <= 0) break
-
-      #============
-      # Trim rate vec according to the number of moves in simulation
-      enabled_moves <- c()#numeric(11)
-
-      if (isTRUE(input$runVoter)) {
-        enabled_moves <- c(enabled_moves, c(1, 2))
-        #enabled_moves[c(1,2)] <- c(1, 2)
-      }
-
-      if (isTRUE(input$runSchelling)) {
-        enabled_moves <- c(enabled_moves, c(3,4,5))
-        #enabled_moves[c(3,4,5)] <- c(3,4,5)
-      }
-
-      if (num_opinions == 4 && isTRUE(input$runVoter)) {
-        enabled_moves <- c(enabled_moves, c(6, 7, 8, 9))
-        #enabled_moves[c(6, 7, 10, 11)] <- c(6, 7, 10, 11)
-      }
-      if (num_opinions == 4 && isTRUE(input$runSchelling)) {
-        enabled_moves <- c(enabled_moves, c(10, 11))
-        #enabled_moves[c(6, 7, 10, 11)] <- c(6, 7, 10, 11)
-      }
 
       #================
       # Apply a random move in Gillespie time
@@ -653,8 +638,7 @@ server <- function(input, output, session) {
                        rate_deradicalize_blue[group_i] # move 9
         )
 
-        # #------------------------
-        # # new moves extreme removed 10 and 11
+        # extreme removed 10 and 11
         rates_vec <- c(rates_vec,
                        leaveR_rate_extreme[group_i],
                        leaveB_rate_extreme[group_i])
@@ -1017,9 +1001,11 @@ server <- function(input, output, session) {
           # # # -------- Infection event --------
           # pick random susceptible
           if (length(S_nodes) == 0) next
+
           weights <- beta_vec[S_nodes]
 
           if (sum(weights) <= 0) next
+
           k <- sample.int(length(S_nodes), 1, prob = weights)
           i <- S_nodes[k]
           stopifnot(epi[i] == S)
@@ -1061,6 +1047,7 @@ server <- function(input, output, session) {
           # -------- Recovery event --------
           # pick random infected
           if (length(I_nodes) == 0) next
+
           k <- sample.int(length(I_nodes), 1)
           i <- I_nodes[k]
           stopifnot(epi[i] == I)
@@ -1081,12 +1068,9 @@ server <- function(input, output, session) {
           R_count <- R_count + 1
 
           if (opinions[i] < 0) {
-
             I_red <- I_red - 1
             R_red <- R_red + 1
-
           } else {
-
             I_blue <- I_blue - 1
             R_blue <- R_blue + 1
           }
@@ -1099,15 +1083,15 @@ server <- function(input, output, session) {
       }
 
       # ---- record step ----
-      
+
       event_counter <- event_counter + 1
 
       if (t - last_record_time >= record_every) {
 
 
         last_record_time <- t
-        
-        
+
+
         # progress
         setProgress(
           value = min(t / t_max, 1),
@@ -1187,11 +1171,11 @@ server <- function(input, output, session) {
         }
 
       }
-    
+
     # end gillespie
-      
+
     }       }
-      ) 
+      )
 
     #=========================
     # Opinions
