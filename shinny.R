@@ -59,6 +59,7 @@ dashboard_ui <- tagList(
       param_help("Total number of groups that individuals can join."),
       numericInput("timesteps", "Iterations", value = 100, min = 1, max = max_supported_t),
       param_help("Maximum Gillespie time horizon for one simulation run."),
+      uiOutput("scaleModeHint"),
 
       sliderInput("lambda", "RIG weight parameter lambda", min = 0, step = 0.01, max = 100, value = 0.5),
       param_help("Higher values create a denser initial individual-group membership structure."),
@@ -188,6 +189,24 @@ ui <- fluidPage(
       .run-status-info {
         color: #5b6879;
       }
+      .scale-mode-hint {
+        margin: 4px 0 16px 0;
+        padding: 10px 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 10px;
+        background: #f6f8fa;
+        color: #374151;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .scale-mode-hint strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #24292f;
+      }
+      .scale-mode-hint p {
+        margin: 0;
+      }
       .graph-notice {
         max-width: 680px;
         margin: 12px 0 20px 0;
@@ -259,6 +278,44 @@ server <- function(input, output, session) {
     } else {
       password_gate_card(auth_error())
     }
+  })
+
+  output$scaleModeHint <- renderUI({
+    req(isTRUE(is_authenticated()))
+    if (!inputs_ready()) {
+      return(NULL)
+    }
+
+    n_value <- suppressWarnings(as.integer(input$n))
+    if (!is.finite(n_value)) {
+      return(NULL)
+    }
+
+    if (n_value > exact_simulation_node_limit) {
+      title <- "Fast aggregate mode"
+      message <- sprintf(
+        "For n > %s, the app uses aggregate counts instead of drawing every individual. Opinion and epidemic plots still update; network graphs are skipped.",
+        exact_simulation_node_limit
+      )
+    } else if (n_value > graph_node_limit) {
+      title <- "Exact individual mode, graphs skipped"
+      message <- sprintf(
+        "For n > %s, the exact simulator still runs but network graphs are hidden to keep the online app responsive.",
+        graph_node_limit
+      )
+    } else {
+      title <- "Exact individual mode with graphs"
+      message <- sprintf(
+        "For n <= %s, the app can show the initial and final network graphs.",
+        graph_node_limit
+      )
+    }
+
+    tags$div(
+      class = "scale-mode-hint",
+      tags$strong(title),
+      tags$p(message)
+    )
   })
 
   output$runStatus <- renderUI({
