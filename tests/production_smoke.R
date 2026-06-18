@@ -129,21 +129,22 @@ local({
   }
 
   default_args <- list(
-    m = 3,
-    t_max = 100,
-    lambda = 0.5,
+    m = 4,
+    t_max = 80,
+    lambda = 0.8,
     c_param = 0.4,
-    gamma_light = 0.1,
-    gamma_dark = 0.02,
-    infected_dark_multiplier = 1.5,
-    beta_plus = 0.5,
-    beta_minus = 0.2,
-    T_threshold = 0.3,
+    gamma_light = 0.6,
+    gamma_dark = 0.05,
+    infected_dark_multiplier = 4,
+    beta_plus = 0.04,
+    beta_minus = 0.005,
+    T_threshold = 0.25,
     num_opinions = 4,
-    beta_red = 1.6,
-    beta_blue = 0.05,
-    gamma_sir = 0.30,
-    initial_infected_fraction = 0.05
+    beta_red = 0.5,
+    beta_blue = 0.16,
+    gamma_sir = 0.14,
+    initial_infected_fraction = 0.04,
+    record_every = 10
   )
   with_args <- function(...) utils::modifyList(default_args, list(...))
 
@@ -168,6 +169,10 @@ local({
   assert_exact_group_consistency(default_result)
   assert(isTRUE(default_result$graph_available), "Default run should keep graph outputs available.")
   assert(default_result$camp_attack_rate[["Red camp"]] > default_result$camp_attack_rate[["Blue camp"]], "Default parameters should make the red camp sicker.")
+  default_memberships_start <- length(default_result$B0@x)
+  default_memberships_final <- length(default_result$B@x)
+  assert(default_memberships_start > 0, "Default run should start with a non-empty membership network.")
+  assert(default_memberships_final / default_memberships_start > 0.5, "Default run should not destroy most memberships.")
 
   no_epidemic_result <- simulate_hybrid_model(
     n = 40,
