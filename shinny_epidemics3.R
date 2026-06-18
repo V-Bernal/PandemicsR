@@ -524,6 +524,8 @@ server <- function(input, output, session) {
       # New: de-radicalize rates
       #==========================
 
+      Tot_g <- sapply(members, length)
+
       rate_radicalize_red  <- numeric(m)
       rate_radicalize_blue <- numeric(m)
       rate_deradicalize_red <- numeric(m)
@@ -532,7 +534,6 @@ server <- function(input, output, session) {
       if (num_opinions == 4 && isTRUE(input$runVoter)) {
 
         enabled_moves <- c(enabled_moves, c(6, 7, 8, 9))
-        Tot_g <- sapply(members, length)
 
         factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
 
