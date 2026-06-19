@@ -1,5 +1,9 @@
 #' Simulate a Fast Aggregate Voter-Schelling-SIR Model
 #'
+#' This is a large-population approximation using the same public parameters as
+#' the main-compatible exact simulator. It preserves the dashboard API while
+#' avoiding materializing individual networks for very large n.
+#'
 #' @author OpenAI Codex
 #'
 #' @name simulate_hybrid_aggregate_model
@@ -11,14 +15,22 @@
 #' @export
 simulate_hybrid_aggregate_model <- function(
     n, m, t_max, lambda, c_param,
-    gamma_light, gamma_dark = gamma_light,
-    infected_dark_multiplier = 1,
+    gamma = NULL,
+    gamma_light = NULL,
+    alpha = 0,
+    alpha_deradicalization = 0,
+    alpha0 = 0,
     beta_plus, beta_minus, T_threshold,
     num_opinions = 2,
-    run_voter = TRUE, run_schelling = TRUE,
+    run_voter = TRUE, run_schelling = TRUE, run_epidemic = TRUE,
+    scaled_n = FALSE, scaled_m = FALSE,
     beta_red = 0.5, beta_blue = 0.25, gamma_sir = 0.2,
     initial_infected_fraction = 0.05,
     max_steps = 600L) {
+
+  if (is.null(gamma)) {
+    gamma <- gamma_light
+  }
 
   params <- validate_hybrid_parameters(
     n = n,
@@ -26,9 +38,10 @@ simulate_hybrid_aggregate_model <- function(
     t_max = t_max,
     lambda = lambda,
     c_param = c_param,
-    gamma_light = gamma_light,
-    gamma_dark = gamma_dark,
-    infected_dark_multiplier = infected_dark_multiplier,
+    gamma = gamma,
+    alpha = alpha,
+    alpha_deradicalization = alpha_deradicalization,
+    alpha0 = alpha0,
     beta_plus = beta_plus,
     beta_minus = beta_minus,
     T_threshold = T_threshold,
@@ -44,27 +57,24 @@ simulate_hybrid_aggregate_model <- function(
   levels_vec <- get_levels_vec(num_opinions)
   state_labels <- get_state_labels(num_opinions)
   state_camps <- get_state_camp_index(num_opinions)
-  dark_states <- get_dark_state_flags(num_opinions)
   n_states <- length(levels_vec)
   camp_labels <- get_camp_labels()
   camp_state_indices <- lapply(seq_along(camp_labels), function(idx) which(state_camps == idx))
   compartment_labels <- c("S", "I", "R")
 
-  if (num_opinions <= 2L) {
-    gamma_dark <- gamma_light
-    infected_dark_multiplier <- 1
-  }
+  red_mod_idx <- match(-1, levels_vec)
+  blue_mod_idx <- match(1, levels_vec)
+  red_ext_idx <- match(-2, levels_vec)
+  blue_ext_idx <- match(2, levels_vec)
 
   parse_initial_infected <- function(value, population_size) {
     if (!is.finite(value) || value <= 0) {
       return(0)
     }
-
     if (value > 1) {
-      return(min(population_size, round(value)))
+      return(min(population_size, floor(value)))
     }
-
-    min(population_size, max(1, round(value * population_size)))
+    min(population_size, floor(value * population_size))
   }
 
   state_counts <- rep(floor(n / n_states), n_states)
@@ -73,7 +83,7 @@ simulate_hybrid_aggregate_model <- function(
   }
   names(state_counts) <- state_labels
 
-  initial_infected_n <- parse_initial_infected(initial_infected_fraction, n)
+  initial_infected_n <- if (isTRUE(run_epidemic)) parse_initial_infected(initial_infected_fraction, n) else 0
   initial_infected_by_state <- state_counts * initial_infected_n / n
 
   sir_counts <- matrix(
@@ -84,11 +94,6 @@ simulate_hybrid_aggregate_model <- function(
   )
   sir_counts[, "S"] <- state_counts - initial_infected_by_state
   sir_counts[, "I"] <- initial_infected_by_state
-
-  base_state_rates <- rep(gamma_light, n_states)
-  base_state_rates[dark_states] <- gamma_dark
-  infected_state_rates <- base_state_rates
-  infected_state_rates[dark_states] <- infected_state_rates[dark_states] * infected_dark_multiplier
 
   sum_state_fraction <- function(current_counts) {
     rowSums(current_counts) / n
@@ -147,42 +152,59 @@ simulate_hybrid_aggregate_model <- function(
     current_time <- time_history[[step_idx + 1L]]
 
     if (isTRUE(run_voter)) {
-      state_totals <- rowSums(sir_counts)
-      cumulative <- cumsum(state_totals)
-      lower_counts <- c(0, cumulative[-length(cumulative)])
-      higher_counts <- n - cumulative
       delta <- matrix(0, nrow = n_states, ncol = length(compartment_labels))
+      state_totals <- rowSums(sir_counts)
 
-      for (state_idx in seq_len(n_states)) {
-        if (state_totals[[state_idx]] <= 0) {
-          next
-        }
-
-        for (comp_idx in seq_along(compartment_labels)) {
-          available <- sir_counts[state_idx, comp_idx]
-          if (available <= 0) {
-            next
+      if (!is.na(red_mod_idx) && !is.na(blue_mod_idx)) {
+        red_total <- state_totals[[red_mod_idx]]
+        blue_total <- state_totals[[blue_mod_idx]]
+        moderate_total <- red_total + blue_total
+        if (moderate_total > 0) {
+          red_to_blue <- dt * gamma * red_total * blue_total / moderate_total / 2
+          blue_to_red <- red_to_blue
+          red_to_blue <- min(red_to_blue, red_total)
+          blue_to_red <- min(blue_to_red, blue_total)
+          if (red_total > 0 && red_to_blue > 0) {
+            moved <- sir_counts[red_mod_idx, ] * (red_to_blue / red_total)
+            delta[red_mod_idx, ] <- delta[red_mod_idx, ] - moved
+            delta[blue_mod_idx, ] <- delta[blue_mod_idx, ] + moved
           }
-
-          changer_rate <- if (comp_idx == 2L) infected_state_rates[[state_idx]] else base_state_rates[[state_idx]]
-          flow_down <- if (state_idx > 1L) dt * changer_rate * available * lower_counts[[state_idx]] / n else 0
-          flow_up <- if (state_idx < n_states) dt * changer_rate * available * higher_counts[[state_idx]] / n else 0
-          total_flow <- flow_down + flow_up
-
-          if (total_flow > available && total_flow > 0) {
-            scale <- available / total_flow
-            flow_down <- flow_down * scale
-            flow_up <- flow_up * scale
-          }
-
-          delta[state_idx, comp_idx] <- delta[state_idx, comp_idx] - flow_down - flow_up
-          if (flow_down > 0) {
-            delta[state_idx - 1L, comp_idx] <- delta[state_idx - 1L, comp_idx] + flow_down
-          }
-          if (flow_up > 0) {
-            delta[state_idx + 1L, comp_idx] <- delta[state_idx + 1L, comp_idx] + flow_up
+          if (blue_total > 0 && blue_to_red > 0) {
+            moved <- sir_counts[blue_mod_idx, ] * (blue_to_red / blue_total)
+            delta[blue_mod_idx, ] <- delta[blue_mod_idx, ] - moved
+            delta[red_mod_idx, ] <- delta[red_mod_idx, ] + moved
           }
         }
+      }
+
+      if (num_opinions == 4L) {
+        state_totals <- rowSums(sir_counts + delta)
+        total_group_proxy <- max(1, sum(state_totals))
+
+        red_rad <- dt * (alpha0 + alpha * state_totals[[red_ext_idx]] / total_group_proxy) * state_totals[[red_mod_idx]]
+        blue_rad <- dt * (alpha0 + alpha * state_totals[[blue_ext_idx]] / total_group_proxy) * state_totals[[blue_mod_idx]]
+        red_derad <- dt * (alpha0 + alpha_deradicalization * state_totals[[red_ext_idx]] / total_group_proxy) * state_totals[[red_mod_idx]]
+        blue_derad <- dt * (alpha0 + alpha_deradicalization * state_totals[[blue_ext_idx]] / total_group_proxy) * state_totals[[blue_mod_idx]]
+
+        red_rad <- min(red_rad, state_totals[[red_mod_idx]])
+        blue_rad <- min(blue_rad, state_totals[[blue_mod_idx]])
+        red_derad <- min(red_derad, state_totals[[red_ext_idx]])
+        blue_derad <- min(blue_derad, state_totals[[blue_ext_idx]])
+
+        move_between_states <- function(from_idx, to_idx, amount) {
+          if (amount <= 0 || state_totals[[from_idx]] <= 0) {
+            return(invisible(FALSE))
+          }
+          moved <- (sir_counts[from_idx, ] + delta[from_idx, ]) * (amount / state_totals[[from_idx]])
+          delta[from_idx, ] <<- delta[from_idx, ] - moved
+          delta[to_idx, ] <<- delta[to_idx, ] + moved
+          invisible(TRUE)
+        }
+
+        move_between_states(red_mod_idx, red_ext_idx, red_rad)
+        move_between_states(blue_mod_idx, blue_ext_idx, blue_rad)
+        move_between_states(red_ext_idx, red_mod_idx, red_derad)
+        move_between_states(blue_ext_idx, blue_mod_idx, blue_derad)
       }
 
       sir_counts <- sir_counts + delta
@@ -190,26 +212,26 @@ simulate_hybrid_aggregate_model <- function(
       normalize_population()
     }
 
-    infected_total <- sum(sir_counts[, "I"])
     new_infections_by_camp <- numeric(length(camp_labels))
-
-    if (infected_total > 0) {
-      for (camp_idx in seq_along(camp_labels)) {
-        state_idx <- camp_state_indices[[camp_idx]]
-        beta <- if (camp_idx == 1L) beta_red else beta_blue
-        infection_rates <- beta * infected_total / n * sir_counts[state_idx, "S"]
-        new_infections <- pmin(sir_counts[state_idx, "S"], dt * infection_rates)
-
-        sir_counts[state_idx, "S"] <- sir_counts[state_idx, "S"] - new_infections
-        sir_counts[state_idx, "I"] <- sir_counts[state_idx, "I"] + new_infections
-        new_infections_by_camp[[camp_idx]] <- sum(new_infections)
+    if (isTRUE(run_epidemic)) {
+      infected_total <- sum(sir_counts[, "I"])
+      if (infected_total > 0) {
+        for (camp_idx in seq_along(camp_labels)) {
+          state_idx <- camp_state_indices[[camp_idx]]
+          beta <- if (camp_idx == 1L) beta_red else beta_blue
+          infection_rates <- beta * infected_total / n * sir_counts[state_idx, "S"]
+          new_infections <- pmin(sir_counts[state_idx, "S"], dt * infection_rates)
+          sir_counts[state_idx, "S"] <- sir_counts[state_idx, "S"] - new_infections
+          sir_counts[state_idx, "I"] <- sir_counts[state_idx, "I"] + new_infections
+          new_infections_by_camp[[camp_idx]] <- sum(new_infections)
+        }
       }
-    }
 
-    recoveries <- pmin(sir_counts[, "I"], dt * gamma_sir * sir_counts[, "I"])
-    sir_counts[, "I"] <- sir_counts[, "I"] - recoveries
-    sir_counts[, "R"] <- sir_counts[, "R"] + recoveries
-    normalize_population()
+      recoveries <- pmin(sir_counts[, "I"], dt * gamma_sir * sir_counts[, "I"])
+      sir_counts[, "I"] <- sir_counts[, "I"] - recoveries
+      sir_counts[, "R"] <- sir_counts[, "R"] + recoveries
+      normalize_population()
+    }
 
     if (any(new_infections_by_camp > 0)) {
       infection_events <- rbind(
@@ -263,6 +285,8 @@ simulate_hybrid_aggregate_model <- function(
     graph_available = FALSE,
     population_size = n,
     group_count = m,
-    model_notes = "Fast aggregate approximation for large populations; individual network rewiring and group histograms are not materialized."
+    event_count = NA_integer_,
+    stop_reason = "Reached maximum time",
+    model_notes = "Fast aggregate approximation using the same public parameters as main-compatible exact mode."
   )
 }

@@ -214,10 +214,11 @@ sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries
 #' @param t_max Maximum Gillespie time horizon.
 #' @param lambda RIG weight parameter.
 #' @param c_param Schelling group-joining rate parameter.
-#' @param gamma_light Baseline voter rate for light opinion states.
-#' @param gamma_dark Baseline voter rate for dark opinion states.
-#' @param infected_dark_multiplier Multiplier applied to dark-state voter rates
-#'   when the individual is infected.
+#' @param gamma Voter interaction rate.
+#' @param gamma_light Backward-compatible alias for \code{gamma}.
+#' @param alpha Same-color radicalization rate.
+#' @param alpha_deradicalization Same-color deradicalization rate.
+#' @param alpha0 Spontaneous radicalization/deradicalization component.
 #' @param beta_plus Schelling leave rate below threshold.
 #' @param beta_minus Schelling leave rate above threshold.
 #' @param T_threshold Minimum same-camp share to avoid the higher leave rate.
@@ -232,8 +233,11 @@ sample_outsider <- function(group_i, members, groups_of_individual, n, max_tries
 #' @export
 validate_hybrid_parameters <- function(
     n, m, t_max, lambda, c_param,
-    gamma_light, gamma_dark,
-    infected_dark_multiplier,
+    gamma = NULL,
+    gamma_light = NULL,
+    alpha = 0,
+    alpha_deradicalization = 0,
+    alpha0 = 0,
     beta_plus, beta_minus, T_threshold,
     num_opinions,
     beta_red, beta_blue, gamma_sir,
@@ -282,15 +286,21 @@ validate_hybrid_parameters <- function(
     stop("This implementation currently supports 2 or 4 opinion states.", call. = FALSE)
   }
 
+  if (is.null(gamma)) {
+    gamma <- gamma_light
+  }
+
   list(
     n = n,
     m = m,
     t_max = require_nonnegative(t_max, "t_max"),
     lambda = require_nonnegative(lambda, "lambda"),
-    c_param = require_probability(c_param, "c_param"),
-    gamma_light = require_nonnegative(gamma_light, "gamma_light"),
-    gamma_dark = require_nonnegative(gamma_dark, "gamma_dark"),
-    infected_dark_multiplier = require_nonnegative(infected_dark_multiplier, "infected_dark_multiplier"),
+    c_param = require_nonnegative(c_param, "c_param"),
+    gamma = require_nonnegative(gamma, "gamma"),
+    alpha = require_probability(alpha, "alpha"),
+    alpha_deradicalization = require_probability(alpha_deradicalization, "alpha_deradicalization"),
+    alpha0 = require_probability(alpha0, "alpha0"),
+    gamma_light = require_nonnegative(gamma, "gamma"),
     beta_plus = require_probability(beta_plus, "beta_plus"),
     beta_minus = require_probability(beta_minus, "beta_minus"),
     T_threshold = require_probability(T_threshold, "T_threshold"),

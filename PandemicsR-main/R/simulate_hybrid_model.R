@@ -1,4 +1,4 @@
-#' Simulate Hybrid Voter-Schelling-SIR Model
+#' Simulate Main-Compatible Voter-Schelling-SIR Model
 #'
 #' @author OpenAI Codex
 #'
@@ -9,22 +9,25 @@
 #' @param t_max Maximum Gillespie time horizon.
 #' @param lambda RIG weight parameter.
 #' @param c_param Schelling group-joining rate parameter.
-#' @param gamma_light Baseline voter rate for light opinion states.
-#' @param gamma_dark Baseline voter rate for dark opinion states.
-#' @param infected_dark_multiplier Multiplier applied to dark-state voter
-#'   rates when the individual is infected.
+#' @param gamma Voter interaction rate used by the current main branch.
+#' @param alpha Same-color radicalization rate.
+#' @param alpha_deradicalization Same-color deradicalization rate.
+#' @param alpha0 Spontaneous radicalization/deradicalization component.
 #' @param beta_plus Schelling leave rate below threshold.
 #' @param beta_minus Schelling leave rate above threshold.
 #' @param T_threshold Minimum same-camp share to avoid the higher leave rate.
 #' @param num_opinions Number of opinion states. Supports 2 and 4.
 #' @param run_voter Logical toggle for voter dynamics.
 #' @param run_schelling Logical toggle for Schelling dynamics.
+#' @param run_epidemic Logical toggle for epidemic dynamics.
+#' @param scaled_n Whether to divide the join rate by n.
+#' @param scaled_m Whether to divide the join rate by m.
 #' @param beta_red Infection rate for the red camp.
 #' @param beta_blue Infection rate for the blue camp.
 #' @param gamma_sir Recovery rate for the epidemic process.
 #' @param initial_infected_fraction Initial infected fraction, or a count if
 #'   greater than 1.
-#' @param record_every Number of Gillespie events between recorded snapshots.
+#' @param record_interval Gillespie time interval between recorded snapshots.
 #' @param simulation_mode \code{"auto"}, \code{"exact"}, or \code{"aggregate"}.
 #' @param exact_threshold Maximum \code{n} for exact individual simulation when
 #'   \code{simulation_mode = "auto"}.
@@ -35,18 +38,27 @@
 #' @export
 simulate_hybrid_model <- function(
     n, m, t_max, lambda, c_param,
-    gamma_light, gamma_dark = gamma_light,
-    infected_dark_multiplier = 1,
+    gamma = NULL,
+    gamma_light = NULL,
+    alpha = 0,
+    alpha_deradicalization = 0,
+    alpha0 = 0,
     beta_plus, beta_minus, T_threshold,
     num_opinions = 2,
-    run_voter = TRUE, run_schelling = TRUE,
+    run_voter = TRUE, run_schelling = TRUE, run_epidemic = TRUE,
+    scaled_n = FALSE, scaled_m = FALSE,
     beta_red = 0.5, beta_blue = 0.25, gamma_sir = 0.2,
     initial_infected_fraction = 0.05,
-    record_every = max(1L, as.integer(n)),
+    record_every = NULL,
+    record_interval = NULL,
     simulation_mode = c("auto", "exact", "aggregate"),
     exact_threshold = 500L,
     graph_threshold = 250L,
     aggregate_max_steps = 600L) {
+
+  if (is.null(gamma)) {
+    gamma <- gamma_light
+  }
 
   params <- validate_hybrid_parameters(
     n = n,
@@ -54,9 +66,10 @@ simulate_hybrid_model <- function(
     t_max = t_max,
     lambda = lambda,
     c_param = c_param,
-    gamma_light = gamma_light,
-    gamma_dark = gamma_dark,
-    infected_dark_multiplier = infected_dark_multiplier,
+    gamma = gamma,
+    alpha = alpha,
+    alpha_deradicalization = alpha_deradicalization,
+    alpha0 = alpha0,
     beta_plus = beta_plus,
     beta_minus = beta_minus,
     T_threshold = T_threshold,
@@ -67,10 +80,15 @@ simulate_hybrid_model <- function(
     initial_infected_fraction = initial_infected_fraction
   )
   list2env(params, environment())
-  record_every <- max(1L, as.integer(round(record_every)))
+
   exact_threshold <- max(1L, as.integer(round(exact_threshold)))
   graph_threshold <- max(1L, as.integer(round(graph_threshold)))
   aggregate_max_steps <- max(1L, as.integer(round(aggregate_max_steps)))
+
+  if (is.null(record_interval)) {
+    record_interval <- if (!is.null(record_every)) as.numeric(record_every) else t_max / 500
+  }
+  record_interval <- max(.Machine$double.eps, as.numeric(record_interval))
 
   simulation_mode <- match.arg(simulation_mode)
   if (identical(simulation_mode, "aggregate") || (identical(simulation_mode, "auto") && n > exact_threshold)) {
@@ -80,15 +98,19 @@ simulate_hybrid_model <- function(
       t_max = t_max,
       lambda = lambda,
       c_param = c_param,
-      gamma_light = gamma_light,
-      gamma_dark = gamma_dark,
-      infected_dark_multiplier = infected_dark_multiplier,
+      gamma = gamma,
+      alpha = alpha,
+      alpha_deradicalization = alpha_deradicalization,
+      alpha0 = alpha0,
       beta_plus = beta_plus,
       beta_minus = beta_minus,
       T_threshold = T_threshold,
       num_opinions = num_opinions,
       run_voter = run_voter,
       run_schelling = run_schelling,
+      run_epidemic = run_epidemic,
+      scaled_n = scaled_n,
+      scaled_m = scaled_m,
       beta_red = beta_red,
       beta_blue = beta_blue,
       gamma_sir = gamma_sir,
@@ -100,20 +122,24 @@ simulate_hybrid_model <- function(
   levels_vec <- get_levels_vec(num_opinions)
   state_labels <- get_state_labels(num_opinions)
   state_camps <- get_state_camp_index(num_opinions)
-  dark_states <- get_dark_state_flags(num_opinions)
   n_states <- length(levels_vec)
   camp_labels <- get_camp_labels()
   camp_state_indices <- lapply(seq_along(camp_labels), function(idx) which(state_camps == idx))
 
-  if (num_opinions <= 2L) {
-    gamma_dark <- gamma_light
-    infected_dark_multiplier <- 1
-  }
+  red_mod_idx <- match(-1, levels_vec)
+  blue_mod_idx <- match(1, levels_vec)
+  red_ext_idx <- match(-2, levels_vec)
+  blue_ext_idx <- match(2, levels_vec)
 
-  base_state_rates <- rep(gamma_light, n_states)
-  base_state_rates[dark_states] <- gamma_dark
-  infected_state_rates <- base_state_rates
-  infected_state_rates[dark_states] <- infected_state_rates[dark_states] * infected_dark_multiplier
+  parse_initial_infected <- function(value, population_size) {
+    if (!is.finite(value) || value <= 0) {
+      return(0L)
+    }
+    if (value > 1) {
+      return(min(population_size, as.integer(floor(value))))
+    }
+    min(population_size, as.integer(floor(value * population_size)))
+  }
 
   ind_w <- rep(lambda, n)
   grp_w <- rep(lambda * n / m, m)
@@ -126,18 +152,6 @@ simulate_hybrid_model <- function(
 
   opinions <- initialize_opinions_multi(n, num_opinions)
   opinion_history <- matrix(opinions, ncol = 1)
-
-  parse_initial_infected <- function(value, population_size) {
-    if (!is.finite(value) || value <= 0) {
-      return(0L)
-    }
-
-    if (value > 1) {
-      return(min(population_size, as.integer(round(value))))
-    }
-
-    min(population_size, max(1L, as.integer(round(value * population_size))))
-  }
 
   groups_of_individual <- vector("list", n)
   for (i in seq_len(n)) {
@@ -172,15 +186,15 @@ simulate_hybrid_model <- function(
 
   members0 <- lapply(members, identity)
 
+  compartment_labels <- c("S", "I", "R")
   sir_state <- rep.int(1L, n)
-  initial_infected_n <- parse_initial_infected(initial_infected_fraction, n)
+  initial_infected_n <- if (isTRUE(run_epidemic)) parse_initial_infected(initial_infected_fraction, n) else 0L
   infected_seed <- integer(0L)
   if (initial_infected_n > 0L) {
     infected_seed <- if (initial_infected_n == n) seq_len(n) else sample.int(n, initial_infected_n)
     sir_state[infected_seed] <- 2L
   }
 
-  compartment_labels <- c("S", "I", "R")
   compartment_state_members <- vector("list", length(compartment_labels))
   sir_counts <- matrix(
     0L,
@@ -195,20 +209,6 @@ simulate_hybrid_model <- function(
       ids <- which(sir_state == comp_idx & opinions == levels_vec[[state_idx]])
       compartment_state_members[[comp_idx]][[state_idx]] <- ids
       sir_counts[state_idx, comp_idx] <- length(ids)
-    }
-  }
-
-  infected_counts <- matrix(0L, nrow = m, ncol = n_states)
-  for (g in seq_len(m)) {
-    ids <- members[[g]]
-    if (!length(ids)) {
-      next
-    }
-
-    infected_ids <- ids[sir_state[ids] == 2L]
-    if (length(infected_ids)) {
-      infected_state_idx <- match(opinions[infected_ids], levels_vec)
-      infected_counts[g, ] <- tabulate(infected_state_idx, nbins = n_states)
     }
   }
 
@@ -242,7 +242,6 @@ simulate_hybrid_model <- function(
     if (is.na(state_idx)) {
       return(invisible(FALSE))
     }
-
     infection_time_history <<- c(infection_time_history, current_time)
     infection_camp_history <<- c(infection_camp_history, camp_labels[[state_camps[[state_idx]]]])
     invisible(TRUE)
@@ -253,9 +252,8 @@ simulate_hybrid_model <- function(
   camp_sir_history <- list(sum_camp_sir_counts(sir_counts))
   time_history <- list(0)
 
-  sample_weighted_state <- function(weights) {
-    idx <- sample.int(length(weights), 1L, prob = weights / sum(weights))
-    idx
+  sample_weighted_index <- function(weights) {
+    sample.int(length(weights), 1L, prob = weights / sum(weights))
   }
 
   sample_from_group_state <- function(group_idx, state_idx) {
@@ -263,17 +261,7 @@ simulate_hybrid_model <- function(
     if (!length(ids)) {
       return(NA_integer_)
     }
-
-    if (length(ids) == 1L || !dark_states[[state_idx]]) {
-      return(ids[[sample.int(length(ids), 1L)]])
-    }
-
-    weights <- ifelse(sir_state[ids] == 2L, infected_dark_multiplier, 1)
-    if (!all(is.finite(weights)) || sum(weights) <= 0) {
-      return(ids[[sample.int(length(ids), 1L)]])
-    }
-
-    sample_one(ids, prob = weights)
+    ids[[sample.int(length(ids), 1L)]]
   }
 
   sample_from_compartment_state <- function(comp_idx, state_idx) {
@@ -281,12 +269,7 @@ simulate_hybrid_model <- function(
     if (!length(ids)) {
       return(NA_integer_)
     }
-
-    if (length(ids) == 1L) {
-      return(ids)
-    }
-
-    sample_one(ids)
+    ids[[sample.int(length(ids), 1L)]]
   }
 
   move_opinion <- function(chosen, new_state_idx) {
@@ -313,11 +296,6 @@ simulate_hybrid_model <- function(
         c(group_state_members[[g]][[new_state_idx]], chosen)
       state_counts[g, old_state_idx] <<- state_counts[g, old_state_idx] - 1L
       state_counts[g, new_state_idx] <<- state_counts[g, new_state_idx] + 1L
-
-      if (current_compartment == 2L) {
-        infected_counts[g, old_state_idx] <<- infected_counts[g, old_state_idx] - 1L
-        infected_counts[g, new_state_idx] <<- infected_counts[g, new_state_idx] + 1L
-      }
     }
 
     invisible(TRUE)
@@ -330,7 +308,6 @@ simulate_hybrid_model <- function(
     }
 
     state_idx <- match(opinions[[chosen]], levels_vec)
-
     compartment_state_members[[old_compartment]][[state_idx]] <<-
       remove_value_fast(compartment_state_members[[old_compartment]][[state_idx]], chosen)
     compartment_state_members[[new_compartment]][[state_idx]] <<-
@@ -339,14 +316,6 @@ simulate_hybrid_model <- function(
     sir_counts[state_idx, old_compartment] <<- sir_counts[state_idx, old_compartment] - 1L
     sir_counts[state_idx, new_compartment] <<- sir_counts[state_idx, new_compartment] + 1L
     sir_state[[chosen]] <<- new_compartment
-
-    if (old_compartment == 2L || new_compartment == 2L) {
-      delta <- if (new_compartment == 2L) 1L else -1L
-      for (g in groups_of_individual[[chosen]]) {
-        infected_counts[g, state_idx] <<- infected_counts[g, state_idx] + delta
-      }
-    }
-
     invisible(TRUE)
   }
 
@@ -357,9 +326,6 @@ simulate_hybrid_model <- function(
     group_state_members[[group_idx]][[state_idx]] <<-
       c(group_state_members[[group_idx]][[state_idx]], chosen)
     state_counts[group_idx, state_idx] <<- state_counts[group_idx, state_idx] + 1L
-    if (sir_state[[chosen]] == 2L) {
-      infected_counts[group_idx, state_idx] <<- infected_counts[group_idx, state_idx] + 1L
-    }
     rig_dirty <<- TRUE
   }
 
@@ -370,9 +336,6 @@ simulate_hybrid_model <- function(
     group_state_members[[group_idx]][[state_idx]] <<-
       remove_value_fast(group_state_members[[group_idx]][[state_idx]], chosen)
     state_counts[group_idx, state_idx] <<- state_counts[group_idx, state_idx] - 1L
-    if (sir_state[[chosen]] == 2L) {
-      infected_counts[group_idx, state_idx] <<- infected_counts[group_idx, state_idx] - 1L
-    }
     rig_dirty <<- TRUE
   }
 
@@ -385,162 +348,214 @@ simulate_hybrid_model <- function(
 
   t <- 0
   event_counter <- 0L
+  last_record_time <- 0
+  stop_reason <- "Reached maximum time"
 
   while (t < t_max) {
-    totals <- rowSums(state_counts)
-    red_counts <- rowSums(state_counts[, camp_state_indices[[1]], drop = FALSE])
-    blue_counts <- rowSums(state_counts[, camp_state_indices[[2]], drop = FALSE])
-
-    voter_down <- matrix(0, nrow = m, ncol = n_states)
-    voter_up <- matrix(0, nrow = m, ncol = n_states)
-
-    if (run_voter) {
-      for (g in seq_len(m)) {
-        total_g <- totals[[g]]
-        if (total_g < 2L) {
-          next
-        }
-
-        counts_g <- state_counts[g, ]
-        cumulative <- cumsum(counts_g)
-        lower_counts <- c(0L, cumulative[-length(cumulative)])
-        higher_counts <- total_g - cumulative
-
-        for (state_idx in which(counts_g > 0L)) {
-          noninfected_count <- counts_g[[state_idx]] - infected_counts[g, state_idx]
-          weighted_changers <- base_state_rates[[state_idx]] * noninfected_count +
-            infected_state_rates[[state_idx]] * infected_counts[g, state_idx]
-
-          if (lower_counts[[state_idx]] > 0L) {
-            voter_down[g, state_idx] <- weighted_changers * lower_counts[[state_idx]] / total_g
-          }
-
-          if (higher_counts[[state_idx]] > 0L) {
-            voter_up[g, state_idx] <- weighted_changers * higher_counts[[state_idx]] / total_g
-          }
-        }
-      }
-    }
-
-    join_term <- numeric(m)
-    leave_red_rate <- numeric(m)
-    leave_blue_rate <- numeric(m)
-
-    if (run_schelling) {
-      join_term <- (c_param / m) * pmax(0, n - totals) / n
-      red_frac <- ifelse(totals > 0L, red_counts / totals, 0)
-      blue_frac <- ifelse(totals > 0L, blue_counts / totals, 0)
-      leave_red_rate <- ifelse(red_frac < T_threshold, beta_plus * red_counts, beta_minus * red_counts)
-      leave_blue_rate <- ifelse(blue_frac < T_threshold, beta_plus * blue_counts, beta_minus * blue_counts)
-    }
-
-    infected_total <- sum(sir_counts[, 2L])
-    susceptible_red <- sum(sir_counts[camp_state_indices[[1]], 1L])
-    susceptible_blue <- sum(sir_counts[camp_state_indices[[2]], 1L])
-    infection_red <- if (infected_total > 0L) beta_red * infected_total / n * susceptible_red else 0
-    infection_blue <- if (infected_total > 0L) beta_blue * infected_total / n * susceptible_blue else 0
-    recovery_by_state <- gamma_sir * sir_counts[, 2L]
-
-    class_rates <- c(
-      voter_down = sum(voter_down),
-      voter_up = sum(voter_up),
-      join = sum(join_term),
-      leave_red = sum(leave_red_rate),
-      leave_blue = sum(leave_blue_rate),
-      infect_red = infection_red,
-      infect_blue = infection_blue,
-      recover = sum(recovery_by_state)
-    )
-
-    lambda_tot <- sum(class_rates)
-    if (!is.finite(lambda_tot) || lambda_tot <= 0) {
+    if (isTRUE(run_epidemic) && sum(sir_counts[, 2L]) <= 0L) {
+      stop_reason <- "No individual is infected (epidemic ended)"
       break
     }
 
-    dt <- stats::rexp(1, lambda_tot)
-    t <- t + dt
+    if (isTRUE(run_epidemic) && sum(sir_counts[, 3L]) == n) {
+      stop_reason <- "All individuals recovered (epidemic ended)"
+      break
+    }
+
+    if (num_opinions == 4L && all(opinions %in% c(-2, 2))) {
+      stop_reason <- "Full polarization (all extreme opinions)"
+      break
+    }
+
+    totals <- rowSums(state_counts)
+    Ri <- if (!is.na(red_mod_idx)) state_counts[, red_mod_idx] else integer(m)
+    Bi <- if (!is.na(blue_mod_idx)) state_counts[, blue_mod_idx] else integer(m)
+    Ei_red <- if (!is.na(red_ext_idx)) state_counts[, red_ext_idx] else integer(m)
+    Ei_blue <- if (!is.na(blue_ext_idx)) state_counts[, blue_ext_idx] else integer(m)
+    Tot <- Ri + Bi
+
+    enabled_moves <- integer(0)
+    voter_term <- numeric(m)
+    if (isTRUE(run_voter)) {
+      enabled_moves <- c(enabled_moves, 1L, 2L)
+      valid <- Ri > 0 & Bi > 0
+      voter_term[valid] <- gamma * (Ri[valid] * Bi[valid] / Tot[valid])
+    }
+
+    join_term <- numeric(m)
+    leaveR_rate <- numeric(m)
+    leaveB_rate <- numeric(m)
+    if (isTRUE(run_schelling)) {
+      enabled_moves <- c(enabled_moves, 3L, 4L, 5L)
+      join_term <- c_param * pmax(0, n - totals) * totals
+      if (isTRUE(scaled_n)) {
+        join_term <- join_term / n
+      }
+      if (isTRUE(scaled_m)) {
+        join_term <- join_term / m
+      }
+
+      frac_red <- ifelse(Tot > 0, Ri / Tot, 0)
+      frac_blue <- ifelse(Tot > 0, Bi / Tot, 0)
+      leaveR_rate <- ifelse(frac_red < T_threshold, beta_plus * Ri, beta_minus * Ri)
+      leaveB_rate <- ifelse(frac_blue < T_threshold, beta_plus * Bi, beta_minus * Bi)
+    }
+
+    infection_by_state <- numeric(n_states)
+    recovery_by_state <- numeric(n_states)
+    if (isTRUE(run_epidemic)) {
+      infected_total <- sum(sir_counts[, 2L])
+      susceptible_by_state <- sir_counts[, 1L]
+      beta_by_state <- ifelse(state_camps == 1L, beta_red, beta_blue)
+      infection_by_state <- if (infected_total > 0L) {
+        infected_total / n * beta_by_state * susceptible_by_state
+      } else {
+        numeric(n_states)
+      }
+      recovery_by_state <- gamma_sir * sir_counts[, 2L]
+    }
+    infection_rate_tot <- sum(infection_by_state)
+    recovery_rate_tot <- sum(recovery_by_state)
+
+    Tot_g <- totals
+    factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
+    rate_radicalize_red <- numeric(m)
+    rate_radicalize_blue <- numeric(m)
+    rate_deradicalize_red <- numeric(m)
+    rate_deradicalize_blue <- numeric(m)
+    if (num_opinions == 4L && isTRUE(run_voter)) {
+      enabled_moves <- c(enabled_moves, 6L, 7L, 8L, 9L)
+      rate_radicalize_red <- (alpha0 + alpha * Ei_red * factor) * Ri
+      rate_radicalize_blue <- (alpha0 + alpha * Ei_blue * factor) * Bi
+      rate_deradicalize_red <- (alpha0 + alpha_deradicalization * Ei_red * factor) * Ri
+      rate_deradicalize_blue <- (alpha0 + alpha_deradicalization * Ei_blue * factor) * Bi
+    }
+
+    leaveR_rate_extreme <- numeric(m)
+    leaveB_rate_extreme <- numeric(m)
+    if (num_opinions == 4L && isTRUE(run_schelling)) {
+      enabled_moves <- c(enabled_moves, 10L, 11L)
+      frac_red_e <- ifelse(Tot_g > 0, Ei_red / Tot_g, 0)
+      frac_blue_e <- ifelse(Tot_g > 0, Ei_blue / Tot_g, 0)
+      leaveR_rate_extreme <- ifelse(frac_red_e < T_threshold, beta_plus * Ei_red, beta_minus * Ei_red)
+      leaveB_rate_extreme <- ifelse(frac_blue_e < T_threshold, beta_plus * Ei_blue, beta_minus * Ei_blue)
+    }
+
+    lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate +
+      rate_radicalize_red + rate_radicalize_blue +
+      rate_deradicalize_red + rate_deradicalize_blue +
+      leaveR_rate_extreme + leaveB_rate_extreme
+
+    social_rate <- sum(lambda_i)
+    epi_rate <- infection_rate_tot + recovery_rate_tot
+    lambda_tot <- social_rate + epi_rate
+    if (!is.finite(lambda_tot) || lambda_tot <= 0) {
+      stop_reason <- "No enabled event has positive rate"
+      break
+    }
+
+    t <- t + stats::rexp(1, lambda_tot)
     if (t >= t_max) {
       t <- t_max
       break
     }
 
-    event_type <- names(class_rates)[sample.int(length(class_rates), 1L, prob = class_rates / lambda_tot)]
+    if (runif(1) < social_rate / lambda_tot) {
+      if (social_rate <= 0) {
+        next
+      }
 
-    if (identical(event_type, "voter_down")) {
-      weights <- as.vector(voter_down)
-      picked <- arrayInd(sample.int(length(weights), 1L, prob = weights / sum(weights)), .dim = dim(voter_down))
-      group_idx <- picked[[1]]
-      state_idx <- picked[[2]]
-      chosen <- sample_from_group_state(group_idx, state_idx)
-      if (!is.na(chosen)) {
-        move_opinion(chosen, state_idx - 1L)
+      group_idx <- sample_weighted_index(lambda_i)
+      rates_vec <- c(
+        ifelse(voter_term[group_idx] > 0, voter_term[group_idx] / 2, 0),
+        ifelse(voter_term[group_idx] > 0, voter_term[group_idx] / 2, 0),
+        join_term[group_idx],
+        leaveR_rate[group_idx],
+        leaveB_rate[group_idx],
+        rate_radicalize_red[group_idx],
+        rate_radicalize_blue[group_idx],
+        rate_deradicalize_red[group_idx],
+        rate_deradicalize_blue[group_idx],
+        leaveR_rate_extreme[group_idx],
+        leaveB_rate_extreme[group_idx]
+      )
+      rates_sub <- rates_vec[enabled_moves]
+      if (!length(rates_sub) || sum(rates_sub) <= 0) {
+        next
       }
-    } else if (identical(event_type, "voter_up")) {
-      weights <- as.vector(voter_up)
-      picked <- arrayInd(sample.int(length(weights), 1L, prob = weights / sum(weights)), .dim = dim(voter_up))
-      group_idx <- picked[[1]]
-      state_idx <- picked[[2]]
-      chosen <- sample_from_group_state(group_idx, state_idx)
-      if (!is.na(chosen)) {
-        move_opinion(chosen, state_idx + 1L)
-      }
-    } else if (identical(event_type, "join")) {
-      group_idx <- sample_weighted_state(join_term)
-      if (totals[[group_idx]] < n) {
+
+      move <- sample(enabled_moves, 1L, prob = rates_sub / sum(rates_sub))
+      if (move == 1L && Ri[[group_idx]] > 0 && Bi[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, red_mod_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, blue_mod_idx)
+        }
+      } else if (move == 2L && Ri[[group_idx]] > 0 && Bi[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, blue_mod_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, red_mod_idx)
+        }
+      } else if (move == 3L && totals[[group_idx]] < n) {
         chosen <- sample_outsider(group_idx, members, groups_of_individual, n)
         if (!is.na(chosen)) {
           add_membership(chosen, group_idx)
         }
-      }
-    } else if (identical(event_type, "leave_red")) {
-      group_idx <- sample_weighted_state(leave_red_rate)
-      state_pool <- camp_state_indices[[1]]
-      state_weights <- state_counts[group_idx, state_pool]
-      if (sum(state_weights) > 0L) {
-        state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
-        chosen <- sample_from_group_state(group_idx, state_idx)
+      } else if (move == 4L && Ri[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, red_mod_idx)
+        if (!is.na(chosen)) {
+          remove_membership(chosen, group_idx)
+        }
+      } else if (move == 5L && Bi[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, blue_mod_idx)
+        if (!is.na(chosen)) {
+          remove_membership(chosen, group_idx)
+        }
+      } else if (move == 6L && Ei_red[[group_idx]] > 0 && Ri[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, red_mod_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, red_ext_idx)
+        }
+      } else if (move == 7L && Ei_blue[[group_idx]] > 0 && Bi[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, blue_mod_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, blue_ext_idx)
+        }
+      } else if (move == 8L && Ei_red[[group_idx]] > 0 && Ri[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, red_ext_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, red_mod_idx)
+        }
+      } else if (move == 9L && Ei_blue[[group_idx]] > 0 && Bi[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, blue_ext_idx)
+        if (!is.na(chosen)) {
+          move_opinion(chosen, blue_mod_idx)
+        }
+      } else if (move == 10L && Ei_red[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, red_ext_idx)
+        if (!is.na(chosen)) {
+          remove_membership(chosen, group_idx)
+        }
+      } else if (move == 11L && Ei_blue[[group_idx]] > 0) {
+        chosen <- sample_from_group_state(group_idx, blue_ext_idx)
         if (!is.na(chosen)) {
           remove_membership(chosen, group_idx)
         }
       }
-    } else if (identical(event_type, "leave_blue")) {
-      group_idx <- sample_weighted_state(leave_blue_rate)
-      state_pool <- camp_state_indices[[2]]
-      state_weights <- state_counts[group_idx, state_pool]
-      if (sum(state_weights) > 0L) {
-        state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
-        chosen <- sample_from_group_state(group_idx, state_idx)
-        if (!is.na(chosen)) {
-          remove_membership(chosen, group_idx)
-        }
+    } else {
+      if (epi_rate <= 0) {
+        next
       }
-    } else if (identical(event_type, "infect_red")) {
-      state_pool <- camp_state_indices[[1]]
-      state_weights <- sir_counts[state_pool, 1L]
-      if (sum(state_weights) > 0L) {
-        state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
-        chosen <- sample_from_compartment_state(1L, state_idx)
-        if (!is.na(chosen)) {
-          if (isTRUE(set_epidemic_state(chosen, 2L))) {
+
+      if (runif(1) < infection_rate_tot / epi_rate) {
+        if (infection_rate_tot > 0) {
+          state_idx <- sample_weighted_index(infection_by_state)
+          chosen <- sample_from_compartment_state(1L, state_idx)
+          if (!is.na(chosen) && isTRUE(set_epidemic_state(chosen, 2L))) {
             record_infection(chosen, t)
           }
         }
-      }
-    } else if (identical(event_type, "infect_blue")) {
-      state_pool <- camp_state_indices[[2]]
-      state_weights <- sir_counts[state_pool, 1L]
-      if (sum(state_weights) > 0L) {
-        state_idx <- state_pool[[sample.int(length(state_pool), 1L, prob = state_weights)]]
-        chosen <- sample_from_compartment_state(1L, state_idx)
-        if (!is.na(chosen)) {
-          if (isTRUE(set_epidemic_state(chosen, 2L))) {
-            record_infection(chosen, t)
-          }
-        }
-      }
-    } else if (identical(event_type, "recover")) {
-      if (sum(recovery_by_state) > 0L) {
-        state_idx <- sample.int(length(recovery_by_state), 1L, prob = recovery_by_state)
+      } else if (recovery_rate_tot > 0) {
+        state_idx <- sample_weighted_index(recovery_by_state)
         chosen <- sample_from_compartment_state(2L, state_idx)
         if (!is.na(chosen)) {
           set_epidemic_state(chosen, 3L)
@@ -549,7 +564,8 @@ simulate_hybrid_model <- function(
     }
 
     event_counter <- event_counter + 1L
-    if (event_counter %% record_every == 0L) {
+    if (t - last_record_time >= record_interval) {
+      last_record_time <- t
       record_snapshot(t)
     }
   }
@@ -631,6 +647,8 @@ simulate_hybrid_model <- function(
     graph_available = n <= graph_threshold,
     population_size = n,
     group_count = m,
-    model_notes = "Exact individual/network simulation."
+    event_count = event_counter,
+    stop_reason = stop_reason,
+    model_notes = "Exact individual/network simulation using main-compatible event rates."
   )
 }

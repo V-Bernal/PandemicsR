@@ -10,15 +10,20 @@ simulate_hybrid_aggregate_model(
   t_max,
   lambda,
   c_param,
-  gamma_light,
-  gamma_dark = gamma_light,
-  infected_dark_multiplier = 1,
+  gamma = NULL,
+  gamma_light = NULL,
+  alpha = 0,
+  alpha_deradicalization = 0,
+  alpha0 = 0,
   beta_plus,
   beta_minus,
   T_threshold,
   num_opinions = 2,
   run_voter = TRUE,
   run_schelling = TRUE,
+  run_epidemic = TRUE,
+  scaled_n = FALSE,
+  scaled_m = FALSE,
   beta_red = 0.5,
   beta_blue = 0.25,
   gamma_sir = 0.2,
@@ -37,12 +42,15 @@ simulate_hybrid_aggregate_model(
 
 \item{c_param}{Schelling group-joining rate parameter.}
 
-\item{gamma_light}{Baseline voter rate for light opinion states.}
+\item{gamma}{Voter interaction rate used by the current main branch.}
 
-\item{gamma_dark}{Baseline voter rate for dark opinion states.}
+\item{gamma_light}{Backward-compatible alias for \code{gamma}.}
 
-\item{infected_dark_multiplier}{Multiplier applied to dark-state voter
-rates when the individual is infected.}
+\item{alpha}{Same-color radicalization rate.}
+
+\item{alpha_deradicalization}{Same-color deradicalization rate.}
+
+\item{alpha0}{Spontaneous radicalization/deradicalization component.}
 
 \item{beta_plus}{Schelling leave rate below threshold.}
 
@@ -55,6 +63,12 @@ rates when the individual is infected.}
 \item{run_voter}{Logical toggle for voter dynamics.}
 
 \item{run_schelling}{Logical toggle for Schelling dynamics.}
+
+\item{run_epidemic}{Logical toggle for epidemic dynamics.}
+
+\item{scaled_n}{Whether to divide the join rate by n.}
+
+\item{scaled_m}{Whether to divide the join rate by m.}
 
 \item{beta_red}{Infection rate for the red camp.}
 

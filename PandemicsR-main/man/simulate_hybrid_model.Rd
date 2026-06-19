@@ -2,7 +2,7 @@
 % Please edit documentation in R/simulate_hybrid_model.R
 \name{simulate_hybrid_model}
 \alias{simulate_hybrid_model}
-\title{Simulate Hybrid Voter-Schelling-SIR Model}
+\title{Simulate Main-Compatible Voter-Schelling-SIR Model}
 \usage{
 simulate_hybrid_model(
   n,
@@ -10,20 +10,26 @@ simulate_hybrid_model(
   t_max,
   lambda,
   c_param,
-  gamma_light,
-  gamma_dark = gamma_light,
-  infected_dark_multiplier = 1,
+  gamma = NULL,
+  gamma_light = NULL,
+  alpha = 0,
+  alpha_deradicalization = 0,
+  alpha0 = 0,
   beta_plus,
   beta_minus,
   T_threshold,
   num_opinions = 2,
   run_voter = TRUE,
   run_schelling = TRUE,
+  run_epidemic = TRUE,
+  scaled_n = FALSE,
+  scaled_m = FALSE,
   beta_red = 0.5,
   beta_blue = 0.25,
   gamma_sir = 0.2,
   initial_infected_fraction = 0.05,
-  record_every = max(1L, as.integer(n)),
+  record_every = NULL,
+  record_interval = NULL,
   simulation_mode = c("auto", "exact", "aggregate"),
   exact_threshold = 500L,
   graph_threshold = 250L,
@@ -41,12 +47,15 @@ simulate_hybrid_model(
 
 \item{c_param}{Schelling group-joining rate parameter.}
 
-\item{gamma_light}{Baseline voter rate for light opinion states.}
+\item{gamma}{Voter interaction rate used by the current main branch.}
 
-\item{gamma_dark}{Baseline voter rate for dark opinion states.}
+\item{gamma_light}{Backward-compatible alias for \code{gamma}.}
 
-\item{infected_dark_multiplier}{Multiplier applied to dark-state voter
-rates when the individual is infected.}
+\item{alpha}{Same-color radicalization rate.}
+
+\item{alpha_deradicalization}{Same-color deradicalization rate.}
+
+\item{alpha0}{Spontaneous radicalization/deradicalization component.}
 
 \item{beta_plus}{Schelling leave rate below threshold.}
 
@@ -60,6 +69,12 @@ rates when the individual is infected.}
 
 \item{run_schelling}{Logical toggle for Schelling dynamics.}
 
+\item{run_epidemic}{Logical toggle for epidemic dynamics.}
+
+\item{scaled_n}{Whether to divide the join rate by n.}
+
+\item{scaled_m}{Whether to divide the join rate by m.}
+
 \item{beta_red}{Infection rate for the red camp.}
 
 \item{beta_blue}{Infection rate for the blue camp.}
@@ -69,7 +84,9 @@ rates when the individual is infected.}
 \item{initial_infected_fraction}{Initial infected fraction, or a count if
 greater than 1.}
 
-\item{record_every}{Number of Gillespie events between recorded snapshots.}
+\item{record_every}{Backward-compatible alias for \code{record_interval}.}
+
+\item{record_interval}{Gillespie time interval between recorded snapshots.}
 
 \item{simulation_mode}{\code{"auto"}, \code{"exact"}, or \code{"aggregate"}.}
 
@@ -84,7 +101,7 @@ greater than 1.}
 A list containing graph objects, histories, and epidemic summaries.
 }
 \description{
-Simulate Hybrid Voter-Schelling-SIR Model
+Simulate Main-Compatible Voter-Schelling-SIR Model
 }
 \author{
 OpenAI Codex
