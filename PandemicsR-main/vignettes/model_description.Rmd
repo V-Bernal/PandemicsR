@@ -1,0 +1,387 @@
+---
+title: "Model description"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{model_description}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, echo = FALSE}
+library(PandemicsR)
+```
+
+# Overview
+
+This package provides a framework for simulating the co-evolution of social
+structure, opinion dynamics, and epidemic spreading in dynamic
+multi-membership networks.
+
+The model is designed to study how social organization, opinion polarization,
+and epidemic spreading interact and influence each other.
+
+The model combines three interacting processes:
+
+1. **Schelling model: a bipartite group membership dynamics**
+2. **Voters model: opinion dynamics model with 2 or 4 opinions**
+3. **Epidemic model: SIR epidemic spreading process**
+
+The three processes are coupled and evolve simultaneously in continuous time
+using a Gillespie stochastic simulation algorithm.
+
+The main assumption is that social organization, individual opinions, and
+epidemic states are not independent. Instead, they continuously influence each
+other during the simulation.
+
+# Model assumptions
+
+The model relies on several assumptions:
+
+1. Individuals interact primarily through shared group memberships.
+2. Individuals may belong to multiple groups simultaneously.
+3. Opinion updates occur only inside groups.
+4. Opinions are synchronized across all memberships of an individual.
+5. Epidemic transmission follows a mean-field prevalence approximation.
+6. Social and epidemic processes evolve on the same continuous-time scale.
+7. All transitions are memoryless stochastic events.
+
+# Population and network representation
+The model therefore contains two coupled representations: the bipartite graph and random intersection graph. 
+
+
+## Individuals and groups
+The population consists of:
+
+- $n$ individuals,
+- $m$ social groups.
+
+Individuals can belong to multiple groups simultaneously.
+
+Memberships are represented as a bipartite network:
+
+\[
+B=(U,V,E)
+\]
+
+where:
+
+- $U$ represents individuals,
+- $V$ represents groups,
+- $E$ represents membership relationships.
+
+An edge between an individual and a group indicates that the individual
+belongs to that group.
+
+
+## Initial membership network
+
+The initial bipartite graph is generated using a random intersection
+construction.
+
+The parameter $\lambda$ controls the expected density of memberships and
+therefore influences:
+
+- the average number of groups per individual,
+- group sizes,
+- social connectivity.
+
+The model allows multi-membership behavior, meaning that individuals may
+participate in several groups simultaneously.
+
+## Projected social network
+
+The bipartite network generates a projected Random Intersection Graph (RIG), which represents (potential) social interactions.
+
+Two individuals are connected in the RIG (social layer) when they share at least one group in the bipartite graph (membership network). 
+
+Because memberships evolve during the simulation, the projected social network
+changes dynamically.
+
+# Opinion dynamics
+
+Each individual holds an opinion variable.
+
+The model supports two configurations.
+
+## Binary opinion model
+
+The binary model contains two moderate states:
+
+\[
+o_i \in \{-1,+1\}
+\]
+
+where:
+
+- $-1$ represents one opinion camp,
+- $+1$ represents the opposing camp.
+
+## Four-state opinion model
+
+The extended model introduces radicalized states:
+
+\[
+o_i \in \{-2,-1,+1,+2\}
+\]
+
+where:
+
+- $-1$ and $+1$ represent moderate opinions,
+- $-2$ and $+2$ represent extreme opinions.
+
+An individual's opinion is consistent across all groups to which they belong.
+
+# Voter interaction dynamics
+
+Opinion updates occur only through interactions inside groups.
+
+For group $i$ define:
+
+- $R_i$: number of moderate individuals with Red opinions,
+- $B_i$: number of moderate individuals with Blue opinions.
+
+If both camps exist in a group, voter conversion occurs at rate:
+
+\[
+r_{voter,i}
+=
+\gamma
+\frac{R_iB_i}{R_i+B_i}
+\]
+
+where:
+
+- $\gamma$ is the voter interaction parameter.
+
+During an event, one individual is selected and changes opinion:
+
+- a moderate Red individual may become Blue,
+- a moderate Blue individual may become Red.
+
+The interaction rate depends on the composition of the group rather than
+absolute group size.
+
+## Radicalization dynamics
+
+When the four-state model is enabled, moderates may become extremists through local reinforcement inside groups. The interaction depends on the fractions of extremes and moderates within the group.
+
+For group $i$:
+
+- $E_{R,i}$ is the number of Red extremists,
+- $E_{B,i}$ is the number of Blue extremists.
+
+Radicalization rates are:
+
+\[
+r_{rad,R,i}
+=
+\alpha
+\frac{E_{R,i}R_i}{m_i}
+\]
+
+and
+
+\[
+r_{rad,B,i}
+=
+\alpha
+\frac{E_{B,i}B_i}{m_i}
+\]
+
+where:
+
+- $\alpha$ controls radicalization strength,
+- $m_i$ is the group size.
+
+Extremists therefore influence moderate individuals from the same opinion
+camp.
+
+Optional deradicalization allows extremists to return to moderate states:
+
+\[
+-2 \rightarrow -1
+\]
+
+and
+
+\[
++2 \rightarrow +1
+\]
+
+with rate controlled by the deradicalization parameter. Spontaneous radicalization is also implemented.
+
+# Schelling membership dynamics
+
+The social structure evolves through joining and leaving processes.
+
+## Joining events
+
+Individuals outside a group may join that group.
+
+The joining rate depends on:
+
+- the joining parameter,
+- the availability of outsiders,
+- population size and/or the group size.
+
+A general formulation is:
+
+\[
+r_{join}
+=
+\frac{c}{m}
+\frac{N_{outside}}{n}
+\]
+
+where:
+
+- $c$ controls group formation,
+- $N_{outside}$ is the number of individuals not belonging to the group.
+
+Note: The rate can be scale by population size n and/or the group size m.
+
+## Leaving events
+
+Individuals may leave groups depending on local satisfaction.
+
+For a group with tolerance threshold $T$, the leaving rate depends on the
+fraction of similar individuals.
+
+Individuals are more likely to leave groups where their opinion is
+underrepresented.
+
+For example, a Red opinion individual may leave according to:
+
+\[
+r_{leave}
+=
+\begin{cases}
+\beta_{+}R_i, & \text{if similarity is below tolerance}\\
+\beta_{-}R_i, & \text{otherwise}
+\end{cases}
+\]
+
+The same mechanism applies symmetrically for blue individuals.
+
+This implements a Schelling-like segregation mechanism where individuals are more likely to abandon groups in which their own opinion is underrepresented. Extreme individuals may also leave groups using analogous rules.
+
+As memberships change, the underlying bipartite graph and the projected random intersection graph evolve over time.
+
+
+# Epidemic model
+
+The epidemic layer follows a stochastic SIR model.
+
+Each individual has one epidemiological state:
+
+\[
+e_i \in \{S,I,R\}
+\]
+
+where:
+
+- $S$ = susceptible,
+- $I$ = infected,
+- $R$ = recovered.
+
+Initially, a set of individuals $I_0$ is randomly selected as infected.
+
+## Infection dynamics
+
+Transmission follows a mean-field prevalence model.
+
+The infected prevalence is:
+
+\[
+p_I=\frac{I}{n}
+\]
+
+A susceptible individual becomes infected at rate:
+
+\[
+r_{infection}
+=
+\beta
+\frac{I}{n}
+\]
+
+where:
+
+- $\beta$ is the transmission parameter.
+
+The model allows opinion-dependent infection rates:
+
+\[
+\beta_{negative}
+\]
+
+and
+
+\[
+\beta_{positive}
+\]
+
+Hence, epidemic susceptibility depends on opinion.
+
+## Recovery dynamics
+
+Recovery occurs independently at a fixed rate for infected individuals, regardless of opinion or membership status.
+
+The recovery transition is:
+
+\[
+I \rightarrow R
+\]
+
+with rate:
+
+\[
+\gamma_{epi}
+\]
+
+where $\gamma_{epi}$ controls the recovery process.
+
+# Gillespie simulation
+
+All processes are integrated using a continuous-time Gillespie algorithm.
+
+At each Gillespie step:
+1. All event rates (social and epidemic) are computed:
+- voter updates,
+- joining events,
+- leaving events,
+- radicalization events,
+- infection events,
+- recovery events.
+
+2. The total rate is \lambda_{\text{tot}} is computed by summing all enabled processes 
+\[
+\lambda_{\text{tot} =
+\sum_k r_k
+\]
+
+3. The waiting time until the next event is sampled:
+
+\[
+\Delta t \sim Exp(\lambda_{\text{tot})
+\]
+
+4. One event is sampled according to its relative rate  \lambda_{\text{i} to the total rate \lambda_{\text{tot}. The selected event updates the system state.
+
+Because event rates depend on the current state of the system, \lambda_{\text{i} to and \lambda_{\text{tot} change after every event.
+
+# Stopping conditions
+
+The simulation terminates when one of the following conditions is reached:
+
+- maximum simulation time,
+- epidemic extinction ($I=0$),
+- complete polarization when the radicalization model is enabled.
+
