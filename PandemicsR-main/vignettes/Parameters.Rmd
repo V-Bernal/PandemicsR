@@ -1,0 +1,115 @@
+---
+title: "Parameters"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Parameters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+# Simulation Parameters
+
+This document describes the simulation parameters.
+
+## User-defined simulation parameters
+| Parameter | Variable | Default | Description |
+|:----------|:---------|:-------:|:------------|
+| Number of individuals | `n` | 15 | Total number of individuals (agents) in the simulation. |
+| Number of groups | `m` | 3 | Total number of groups (communities) in the bipartite network. |
+| Number of Opinions | `num_opinions` | 4 | Number of possible opinions. The four-opinion model consists of −2, −1, +1 and +2, where ±2 represent extremist opinions and ±1 represent moderate opinions. |
+| Gillespie max time | `t_max` | 1000 | Maximum simulation time (Gillespie time units). |
+| RIG weight parameter |`lambda` | 0.2–0.5 | Initial bipartite membership density controlling the expected number of group memberships per individual. |
+
+### Group membership layer 
+| Parameter | Variable | Default | Description |
+|:----------|:---------|:-------:|:------------|
+| join rate |`c_param` | 0.1–0.81 | Base rate at which individuals outside a group may join that group. |
+| Leave rate below tolerance | `beta_plus` | 0.7 | Leaving rate when the fraction of similar opinions inside a group is below the tolerance threshold. |
+| Leave rate above tolerance | `beta_minus` | 0.2–0.3 | Leaving rate when the fraction of similar opinions is above the tolerance threshold. Typically smaller than `beta_plus`. |
+| Tolerance fraction |  `T_threshold` | 0.5 | Minimum fraction of similar opinions required for an individual to remain satisfied within a group. |
+
+### Opinions layer
+| Parameter | Variable | Default | Description |
+|:----------|:---------|:-------:|:------------|
+| Opinions rate |`gamma` | 5 | Voter dynamics rate controlling the frequency of opinion updates among moderate individuals. |
+| Radicalization rate | `alpha` | 0.1 | Rate at which moderate individuals convert to extremist of the same political orientation. |
+| de-Radicalization rate| `alpha_deradicalization` | 0.1 | Rate at which extremist convert into moderates of the same political orientation.|
+| spontaneous (de)-radicalization rate| `alpha0` | 0.1 | Rate at which extremist convert to moderates and viceversa without any interaction mechanism|
+
+### Epidemic layer
+| Parameter | Variable | Default | Description |
+|:----------|:---------|:-------:|:------------|
+| Initial infected individuals | `I0` | 1 | Number of individuals randomly selected as infected at the start of the simulation. |
+| Infection rate (negative opinions) | `beta_red` | 0.30 | Infection rate for individuals holding negative opinions (`-1` and `-2`). |
+| Infection rate (positive opinions) | `beta_blue` | 0.30 | Infection rate for individuals holding positive opinions (`+1` and `+2`). |
+| Recovery rate | `gamma_epi` | 0.10 | Rate at which infected individuals recover and transition from the infected (`I`) to the recovered (`R`) state. |
+| Enable epidemic dynamics | `epidemic_on` | `TRUE` | Enables or disables the epidemic (SIR) process during the simulation. |
+
+
+# Internal bookkeeping variables
+
+The following objects are generated and maintained internally during the simulation.
+
+| Variable | Type | Description |
+|:---------|:-----|:------------|
+| `ind_w` | Numeric vector (`n`) | Individual weights used to generate the initial bipartite network. |
+| `grp_w` | Numeric vector (`m`) | Group weights controlling the attractiveness of groups during network initialization. |
+| `B0` | Bipartite matrix | Initial individual–group membership matrix. Rows correspond to individuals and columns to groups. |
+| `RIG0` | Graph | Initial Random Intersection Graph (RIG) obtained by projecting the bipartite network onto the individual layer. |
+| `opinions` | Integer vector (`n`) | Current opinion of every individual. Values are −2, −1, +1 or +2. |
+| `opinion_history` | Matrix | Stores the opinion of every individual through time. |
+| `members` | List (`m`) | Members currently belonging to each group. |
+| `red_members` | List (`m`) | Moderate negative (`−1`) members within each group. |
+| `blue_members` | List (`m`) | Moderate positive (`+1`) members within each group. |
+| `outsiders` | List (`m`) | Individuals that are not members of each group. |
+| `groups_of_individual` | List (`n`) | Groups to which each individual currently belongs. |
+| `Ri` | Integer vector (`m`) | Number of moderate negative (`−1`) individuals in each group. Used in voter and Schelling dynamics. |
+| `Bi` | Integer vector (`m`) | Number of moderate positive (`+1`) individuals in each group. Used in voter and Schelling dynamics. |
+| `rig_dirty` | Logical | Indicates whether the projected Random Intersection Graph must be rebuilt following membership changes. |
+
+## Epidemic dynamics
+
+| Variable | Type | Description |
+|:---------|:-----|:------------|
+| `epi_state` | Integer or factor vector (`n`) | Epidemiological state of each individual (`S`, `I`, or `R`). |
+| `infected` | Integer vector | Indices of currently infected individuals. |
+| `susceptible` | Integer vector | Indices of susceptible individuals. |
+| `recovered` | Integer vector | Indices of recovered individuals. |
+| `I` | Integer | Current number of infected individuals. |
+| `S` | Integer | Current number of susceptible individuals. |
+| `R` | Integer | Current number of recovered individuals. |
+| `prevalence` | Numeric | Current infected prevalence, \(I/n\). |
+| `infection_history` | Matrix or data frame | Stores the epidemiological state or counts through time. |
+| `beta_individual` | Numeric vector (`n`) | Opinion-dependent infection rate assigned to each individual. |
+| `initial_infected` | Integer vector | Individuals selected as infected at the beginning of the simulation. |
+
+## Gillespie simulation
+
+| Variable | Type | Description |
+|:---------|:-----|:------------|
+| `rates` | List | Collection of event rates for all enabled processes. |
+| `social_rate` | Numeric | Total rate of all social events (voter, Schelling, radicalization). |
+| `infection_rate` | Numeric | Total infection event rate. |
+| `recovery_rate` | Numeric | Total recovery event rate. |
+| `lambda_total` | Numeric | Sum of all event rates used by the Gillespie algorithm. |
+| `time` | Numeric | Current simulation time. |
+| `event` | Character | Type of the most recently executed event. |
+| `event_history` | Data frame | Chronological record of simulation events. |
+| `dt` | Numeric | Waiting time between consecutive Gillespie events. |
+| `step` | Integer | Current Gillespie iteration number. |
+
+# Notes
+
+- All parameters are specified before the simulation starts.
+- Internal variables are updated automatically during the Gillespie simulation.
+- Membership changes modify both the bipartite network and the projected Random Intersection Graph.
+- Opinion changes are synchronized across all groups to which an individual belongs.
+- The exact set of internal variables may evolve as new features are added to the package.
