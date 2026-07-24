@@ -2,6 +2,14 @@
 An R package for simulating epidemic dynamics on networks.
 The simulation includes 3 layers: an opinion model, a Schelling model, and an Epidemic model.
 
+## Documentation
+
+Detailed documentation is available in the package vignettes:
+
+- [Introduction](vignettes/introduction.Rmd)
+- [Model description](vignettes/model_description.Rmd)
+- [Parameters](vignettes/Parameters.Rmd)
+
 ---
 ## Architecture
 Pipeline:
@@ -31,12 +39,3 @@ Run the script or Shiny for testing.
 - `Matrix`
 - `shiny`
 - `zip`
-
-## Documentation
-
-Detailed documentation is available in the package vignettes:
-
-- [Introduction](vignettes/introduction.Rmd)
-- [Model description](vignettes/model_description.Rmd)
-- [Simulation workflow](vignettes/simulation_workflow.Rmd)
-- [Advanced configuration](vignettes/advanced_configuration.Rmd)
