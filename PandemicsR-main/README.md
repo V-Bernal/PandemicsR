@@ -22,14 +22,21 @@ library(devtools)
 install_github("V-Bernal/PandemicsR", subdir="PandemicsR-main")
 
 ```
-Run the script or shinny for testing. 
+Run the script or Shiny for testing. 
 
 ---
 ## Requirements
-- R version
-- R packages:
-- - shiny
-  - igraph
-  - Matrix
-  - zip
+- `R >= 4.3.0`
+- `igraph`
+- `Matrix`
+- `shiny`
+- `zip`
 
+## Documentation
+
+Detailed documentation is available in the package vignettes:
+
+- [Introduction](vignettes/introduction.Rmd)
+- [Model description](vignettes/model_description.Rmd)
+- [Simulation workflow](vignettes/simulation_workflow.Rmd)
+- [Advanced configuration](vignettes/advanced_configuration.Rmd)
