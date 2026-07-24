@@ -36,6 +36,17 @@ ui <- fluidPage(
         h4("Schelling model"),
         checkboxInput("runSchelling", "Schelling model", value = FALSE),
 
+<<<<<<< HEAD
+        sliderInput("c_param", "join group rate c", min = 0, step = 0.01, max = 1, value = 0.4),
+
+        h6("*to scale the join rate: tick the box"),
+        checkboxInput("scaled_n", "scaled by N", value = FALSE),
+        checkboxInput("scaled_m", "scaled by m", value = FALSE),
+
+        sliderInput("beta_plus", "leave rate above tolerance", min = 0, step = 0.01, max = 1, value = 0.5),
+        sliderInput("beta_minus", "leave rate below tolerance", min = 0, step = 0.01, max = 1, value = 0.2),
+        sliderInput("T_threshold", "tolerance threshold", min = 0, step = 0.01, max = 1, value = 0.3)
+=======
         sliderInput("c_param", "Schelling: join rate param c", min = 0, step = 0.01, max = 1, value = 0.4),
 
         h6("*to scale the join rate tick the box"),
@@ -45,6 +56,7 @@ ui <- fluidPage(
         sliderInput("beta_plus", "Schelling: beta_plus", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "Schelling: beta_minus", min = 0, step = 0.01, max = 1, value = 0.2),
         sliderInput("T_threshold", "Schelling: T_threshold", min = 0, step = 0.01, max = 1, value = 0.3)
+>>>>>>> 867a80fa2079e131696e27225b8fbef3dbc34027
       ),
 
       # Section 3: Voter
@@ -52,7 +64,11 @@ ui <- fluidPage(
         h4("Voter's model"),
         checkboxInput("runVoter", "Voter model", value = FALSE),
         #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
+<<<<<<< HEAD
+        sliderInput("gamma", "Opinions rate", min = 0, step = 0.1, max = 100, value = 5),
+=======
         sliderInput("gamma", "Voter: gamma", min = 0, step = 0.1, max = 100, value = 5),
+>>>>>>> 867a80fa2079e131696e27225b8fbef3dbc34027
         sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
 
         # Section 4: Extremes
