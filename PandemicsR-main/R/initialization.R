@@ -131,7 +131,7 @@ init_epidemic <- function(params, opinions){
   S <- 0
   I <- 1
   R <- 2
-
+  
   # Initial infected
   I0 <- floor(params$I0 * n)
 

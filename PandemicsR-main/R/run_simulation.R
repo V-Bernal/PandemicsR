@@ -53,7 +53,6 @@ run_simulation <- function(params) {
 
     members0 = group_state$members,
     in_group = logical(params$n)
-
   )
 
   # Add epidemic state if active
