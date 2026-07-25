@@ -46,14 +46,17 @@ gillespie_step <- function(state, params, t){
     }
 
   } else {
-
-    state <- apply_epidemic_event(
-      state,
-      rates,
-      params,
-      t
-    )
-
+    
+    #Check epidemic activation
+    if( t >= params$epi_time){
+      state <- apply_epidemic_event(
+        state,
+        rates,
+        params,
+        t
+      )
+    }
+    
   }
 
   return(list(
