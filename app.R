@@ -66,12 +66,79 @@ ui <- fluidPage(
       wellPanel(
         h4("Epidemics model"),
         checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
-        sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.01),
+        sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
         sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
         sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
       ),
-
+      
+      # Section 5.1: Epidemics activation
+      wellPanel(
+        h4("Epidemics activation"),
+      
+      selectInput(
+        "epi_trigger",
+        "Start epidemic after:",
+        choices = c(
+          "Fixed time" = "time",
+          "Fixed events" = "events",
+          "Events per node" = "events_per_node",
+          "Opinion stability" = "opinion_stability",
+          "Segregation stability" = "segregation_stability"
+        ),
+        selected = "time"
+      ),
+      
+      conditionalPanel(
+        condition = "input.epi_trigger == 'time'",
+        numericInput(
+          "epi_time",
+          "Epidemic start time:",
+          value = 0,
+          min = 0
+        )
+      ),
+      
+      conditionalPanel(
+        condition = "input.epi_trigger == 'events'",
+        numericInput(
+          "epi_events",
+          "Number of warm-up events:",
+          value = 10000,
+          min = 0
+        )
+      ),
+      
+      conditionalPanel(
+        condition = "input.epi_trigger == 'events_per_node'",
+        numericInput(
+          "epi_events_node",
+          "Warm-up events per node:",
+          value = 20,
+          min = 1
+        )
+      ),
+      
+      conditionalPanel(
+        condition = "input.epi_trigger == 'opinion_stability'",
+        numericInput(
+          "epi_epsilon_opinion",
+          "Opinion change threshold:",
+          value = 0.001,
+          min = 0
+        )
+      ),
+      
+      conditionalPanel(
+        condition = "input.epi_trigger == 'segregation_stability'",
+        numericInput(
+          "epi_epsilon_seg",
+          "Segregation change threshold:",
+          value = 0.001,
+          min = 0
+        )
+      )
+      ),
       # Section 6: Visualization
       wellPanel(
         h4("Visualization"),
@@ -195,11 +262,11 @@ server <- function(input, output, session) {
     #   alpha0 = 0.5,
     #   runVoter = TRUE,
     #   runSchelling = TRUE,
+    #   runEpidemic = FALSE,
     #   beta_red = 0.2,
     #   beta_blue = 0.2,
     #   gamma_epi = 0.5
-    #   I0 = 0.5,
-    #   runEpidemic = FALSE
+    #   I0 = 0.5
     # )
 
     params <- list(
@@ -219,14 +286,15 @@ server <- function(input, output, session) {
       runEpidemic = input$runEpidemic,
       runVoter = input$runVoter,
       runSchelling = input$runSchelling,
-      I0 = input$I0,
       beta_red = input$beta_red,
       beta_blue = input$beta_blue,
-      gamma_epi = input$gamma_epi
+      gamma_epi = input$gamma_epi,
+      I0 = input$I0
     )
-
-
-
+    
+    #params$epi_trigger <- input$epi_trigger[input$epi_trigger == c("time", "events", "events_per_node", "opinion_stability", "segregation_stability")]
+    params$epi_time <- input$epi_time
+    
   # Simulation
     run_simulation(params)
 
@@ -238,7 +306,6 @@ server <- function(input, output, session) {
   #==========================
   # Section 6: Visualization
   #==========================
-
   # Stopping reason
   output$stopReason <- renderText({
     req(simData())
