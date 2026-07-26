@@ -313,7 +313,7 @@ server <- function(input, output, session) {
     #params$epi_trigger <- input$epi_trigger[input$epi_trigger == c("time", "events", "events_per_node", "opinion_stability", "segregation_stability")]
     params$epi_time <- input$epi_time
     
-  # Simulation
+    # Simulation
     run_simulation(params)
 
     }
@@ -324,6 +324,7 @@ server <- function(input, output, session) {
   #==========================
   # Section 6: Visualization
   #==========================
+  
   # Stopping reason
   output$stopReason <- renderText({
     req(simData())
@@ -346,10 +347,10 @@ server <- function(input, output, session) {
   })
 
 
-  #---------------
+  # Network 
   output$rig0Plot <- renderPlot({
-    req(simData())           # simulation must exist
-    req(input$show_rig0)     # checkbox must be TRUE
+    req(simData())           
+    req(input$show_rig0)     
 
     visual_step_multi(
       simData()$RIG0,
@@ -359,8 +360,8 @@ server <- function(input, output, session) {
   })
 
   output$rigPlot <- renderPlot({
-    req(simData())           # simulation must exist
-    req(input$show_rig)     # checkbox must be TRUE
+    req(simData())           
+    req(input$show_rig)     
 
     visual_step_multi(
       simData()$RIG,
@@ -368,29 +369,44 @@ server <- function(input, output, session) {
       simData()$num_opinions
     )
   })
-
-  output$bipartite0Plot <- renderPlot({     req(simData())           # simulation must exist
-    req(input$show_rig0)     # checkbox must be TRUE;
-    visual_bipartite(simData()$B0, simData()$opinion_history[,1], simData()$num_opinions) })
+  
+  output$bipartite0Plot <- renderPlot({     
+    req(simData())           
+    req(input$show_rig0)     
+    visual_bipartite(simData()$B0, 
+                     simData()$opinion_history[,1], 
+                     simData()$num_opinions) })
 
   output$bipartitePlot <- renderPlot({
-    req(simData())           # simulation must exist
-    req(input$show_rig)     # checkbox must be TRUE;
-    visual_bipartite(simData()$B, simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions) })
+    req(simData())          
+    req(input$show_rig)     
+    visual_bipartite(simData()$B, 
+                     simData()$opinion_history[,ncol( simData()$opinion_history)], 
+                     simData()$num_opinions) })
 
   # Voter's dynamics
   output$fracPlot <- renderPlot({
     req(simData())
-
     visual_step_time(
       simData()$frac_mat,
       simData()$num_opinions
     )
   })
 
-  output$histo <- renderPlot({ req(simData()); visual_histo(simData()$opinion_history, simData()$num_opinions) })
-  output$histogramGroup0 <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,1], simData()$num_opinions, simData()$members0) })
-  output$histogramGroup <- renderPlot({ req(simData()); visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], simData()$num_opinions, simData()$members) })
+  output$histo <- renderPlot({ 
+    req(simData()); 
+    visual_histo(simData()$opinion_history, 
+                 simData()$num_opinions) })
+  
+  output$histogramGroup0 <- 
+    renderPlot({ req(simData()); 
+      visual_histo_pergroup(simData()$opinion_history[,1], 
+                            simData()$num_opinions, simData()$members0) })
+  
+  output$histogramGroup <- renderPlot({ 
+    req(simData()); 
+    visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], 
+                          simData()$num_opinions, simData()$members) })
 
   # Epidemic layer
   output$SIR1 <- renderPlot({
@@ -418,40 +434,26 @@ server <- function(input, output, session) {
     req(input$runEpidemic)
     visual_step_time_SIR(x = simData()$SIR_df_out) })
 
-  # output$SIR6 <- renderPlot({
-  #   req(simData())
-  #   req(input$runEpidemic)
-  #   visual_SIR(inf_time = simData()$inf_time, inf_camp = simData()$inf_camp)  })
-
+  # Download plots
   output$downloadAllPlots <- downloadHandler(
-
     filename = function() {
       paste0("all_plots_", Sys.Date(), ".zip")
     },
-
     content = function(file) {
-
       req(simData())
-
       # Temporary folder
       tmpdir <- tempdir()
-
-      #==========================
+      
       # Helper function
-      #==========================
       save_plot <- function(filename, plot_expr) {
-
         filepath <- file.path(tmpdir, filename)
-
         png(
           filename = filepath,
           width = 1400,
           height = 1000,
           res = 150
         )
-
         plot_expr
-
         dev.off()
       }
 
