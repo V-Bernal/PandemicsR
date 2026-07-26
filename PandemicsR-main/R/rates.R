@@ -106,6 +106,8 @@ compute_rates <- function(state, params){
   recovery_rate_tot <- 0
   #beta_vec <- NULL
   epi_rate <- 0
+  infection_red_rate <- 0
+  infection_blue_rate <- 0
 
   if (isTRUE(params$runEpidemic)) {
 
@@ -168,8 +170,8 @@ compute_rates <- function(state, params){
     leaveR_rate_extreme = leaveR_rate_extreme,
     leaveB_rate_extreme = leaveB_rate_extreme,
 
-    infection_red_rate=infection_red_rate,
-    infection_blue_rate=infection_blue_rate,
+    infection_red_rate = infection_red_rate,
+    infection_blue_rate = infection_blue_rate,
 
     infection_rate_tot = infection_rate_tot,
     recovery_rate_tot = recovery_rate_tot,
