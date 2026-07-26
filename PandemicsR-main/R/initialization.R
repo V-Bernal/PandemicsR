@@ -1,8 +1,7 @@
 #==========================
-# 2. Model parameters
+# Initialize Network
 #==========================
 init_network <- function(params){
-
   # Homogeneous weights
   ind_w <- rep(params$lambda, params$n)
   grp_w <- rep(params$lambda * params$n / params$m, params$m)
@@ -20,10 +19,8 @@ init_network <- function(params){
   )
 }
 
-
-
 #==========================
-# Opinion trackers
+# Initialize Opinion trackers
 #==========================
 # Voter tracker
 init_opinions <- function(params){
@@ -48,7 +45,7 @@ init_opinions <- function(params){
 }
 
 #==========================
-# groups
+# Initialize Groups
 #==========================
 init_groups <- function(B0, opinions, params){
 
@@ -117,7 +114,7 @@ init_groups <- function(B0, opinions, params){
 }
 
 #==========================
-# epidemics
+# Initialize Epidemics
 #==========================
 init_epidemic <- function(params, opinions){
 
@@ -131,7 +128,7 @@ init_epidemic <- function(params, opinions){
   S <- 0
   I <- 1
   R <- 2
-  
+
   # Initial infected
   I0 <- floor(params$I0 * n)
 
@@ -169,9 +166,8 @@ init_epidemic <- function(params, opinions){
     pos_in_I[I_nodes[k]] <- k
   }
 
-  #==========================
+
   # Opinion camp counters
-  #==========================
   total_red  <- sum(opinions < 0)
   total_blue <- sum(opinions > 0)
 
@@ -230,7 +226,9 @@ init_epidemic <- function(params, opinions){
 }
 
 
-#========================
+#==========================
+# Format Output
+#==========================
 finalize_output <- function(
     state,
     trackers,
@@ -240,21 +238,8 @@ finalize_output <- function(
     t,
     comp_time,
     event_counter){
-  #=========================
-  # Final opinion history
-  #=========================
 
-  # if (!is.null(trackers$opinion_history)) {
-  #
-  #   trackers$opinion_history[, ncol(trackers$opinion_history)] <-
-  #     state$opinions
-  #
-  # }
-
-  #=========================
   # Reconstruct RIG if needed
-  #=========================
-
   B <- network_state$B0
   RIG <- network_state$RIG0
 
@@ -269,10 +254,6 @@ finalize_output <- function(
     RIG <- bipartite_to_rig(B)
   }
 
-
-  #=========================
-  # Finalize tracker output
-  #=========================
 
   tracker_output <- finalize_trackers(
     trackers,

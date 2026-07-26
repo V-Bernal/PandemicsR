@@ -1,6 +1,8 @@
 gillespie_step <- function(state, params, t){
 
-  # rates
+  #==========================
+  # Compute rates
+  #==========================
   rates <- compute_rates(state, params)
 
   if (rates$lambda_tot <= 0) {
@@ -12,7 +14,9 @@ gillespie_step <- function(state, params, t){
     ))
   }
 
+  #==========================
   # Gillespie time
+  #==========================
   dt <- stats::rexp(1, rates$lambda_tot)
   t <- t + dt
 
@@ -25,7 +29,9 @@ gillespie_step <- function(state, params, t){
     ))
   }
 
+  #==========================
   # Select Social or Epidemic event
+  #==========================
   u_event <- stats::runif(1)
 
   if (u_event < rates$social_rate / rates$lambda_tot){
@@ -46,8 +52,8 @@ gillespie_step <- function(state, params, t){
     }
 
   } else {
-    
-    #Check epidemic activation
+
+    # Check epidemic activation
     if( t >= params$epi_time){
       state <- apply_epidemic_event(
         state,
@@ -56,7 +62,7 @@ gillespie_step <- function(state, params, t){
         t
       )
     }
-    
+
   }
 
   return(list(

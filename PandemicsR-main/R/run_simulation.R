@@ -4,7 +4,9 @@
 #' @export
 run_simulation <- function(params) {
 
+  #==========================
   # 1. Initialization
+  #==========================
 
   # Network
   network_state <- init_network(params)
@@ -30,7 +32,9 @@ run_simulation <- function(params) {
 
   }
 
+  #==========================
   # Build global state
+  #==========================
   state <- list(
     opinions = opinion_state$opinions,
 
@@ -71,77 +75,54 @@ run_simulation <- function(params) {
     state$opinions
   )
 
+  #==========================
   # 2. Gillespie loop
+  #==========================
 
-    # real time
-    start_time <- Sys.time()
+    # Gillespie algorithm
+  start_time <- Sys.time()
+  t <- 0
+  stop_reason <- "Reached maximum time"
 
-    #===============
-    # Progress bar
-    #===============
-    # withProgress(
-    #   message = "Running simulation",
-    #   detail = "Starting...",
-    #   value = 0,
-       #{
+  while (t < params$t_max) {
 
-        # Gillespie algorithm
-        t <- 0
-        stop_reason <- "Reached maximum time"
+    # Stopping criteria
+    stop <- check_stopping(state, params)
 
-        while (t < params$t_max) {
+    if (stop$stop) {
+      stop_reason <- stop$reason
+      break
+    }
 
-          # Stopping criteria
+    # Gillespie step
+    step <- gillespie_step(
+      state,
+      params,
+      t
+    )
 
-          stop <- check_stopping(state, params)
+    state <- step$state
+    t <- step$t
 
-          if (stop$stop) {
-            stop_reason <- stop$reason
-            break
-          }
+    if(step$stop)
+      break
 
-          # Gillespie step
-          step <- gillespie_step(
-            state,
-            params,
-            t
-          )
+    # ---- record step ----
+    trackers$event_counter <- trackers$event_counter + 1
 
-          state <- step$state
-          t <- step$t
+    if (t - trackers$last_record_time >= trackers$record_every) {
 
-          if(step$stop)
-            break
+      trackers$last_record_time <- t
 
-          # ---- record step ----
-          trackers$event_counter <- trackers$event_counter + 1
+      trackers <- update_trackers(
+        trackers,
+        state,
+        t,
+        params
+      )
 
-          if (t - trackers$last_record_time >= trackers$record_every) {
-
-            trackers$last_record_time <- t
-
-            # setProgress(
-            #   value = min(t / params$t_max, 1),
-            #   detail = sprintf(
-            #     "t = %.2f / %.2f | events = %d",
-            #     t,
-            #     params$t_max,
-            #     trackers$event_counter
-            #   )
-            # )
-
-            trackers <- update_trackers(
-              trackers,
-              state,
-              t,
-              params
-            )
-
-            }
-        }
-        # end gillespie
-      #}
-  #)
+      }
+        } # end gillespie
   end_time <- Sys.time()
   comp_time <- end_time - start_time
 
@@ -149,8 +130,9 @@ run_simulation <- function(params) {
   #   trackers,
   #   params)
 
-
-    # Output
+  #==========================
+  # Output
+  #==========================
     result <- finalize_output(
       state,
       trackers,

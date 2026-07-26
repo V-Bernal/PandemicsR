@@ -1,5 +1,8 @@
 compute_rates <- function(state, params){
 
+  #==========================
+  # moves
+  #==========================
   enabled_moves <- integer(0)
 
   if (params$runVoter)
@@ -19,7 +22,7 @@ compute_rates <- function(state, params){
   #==========================
   voter_term <- numeric(params$m)
 
-  Tot <- state$Ri + state$Bi# moderate_total
+  Tot <- state$Ri + state$Bi # moderate_total
   Tot_g <- sapply(state$members, length) # group_size
 
   if (isTRUE(params$runVoter)) {
@@ -45,8 +48,7 @@ compute_rates <- function(state, params){
       join_term <- join_term/params$m
     }
 
-    # leaving a group rates
-    # The rate of leaving a group is B+ or B- depending on the threshold
+    # leaving a group rates: The rate of leaving a group is B+ or B- depending on the threshold
     frac_red <- ifelse(Tot > 0, state$Ri / Tot, 0)
     frac_blue <- ifelse(Tot > 0, state$Bi / Tot, 0)
 
@@ -56,7 +58,7 @@ compute_rates <- function(state, params){
   }
 
   #==========================
-  # New: de-radicalize rates
+  # de-radicalization rates
   #==========================
   rate_radicalize_red  <- numeric(params$m)
   rate_radicalize_blue <- numeric(params$m)
@@ -76,7 +78,7 @@ compute_rates <- function(state, params){
   }
 
   #==========================
-  # New: leave rates radicals
+  # Leave rates radicals
   #==========================
 
   leaveR_rate_extreme <- numeric(params$m)
@@ -100,27 +102,16 @@ compute_rates <- function(state, params){
   }
 
   #==========================
-  # Epidemic rates (NEW)
+  # Epidemic rates
   #==========================
   infection_rate_tot <- 0
   recovery_rate_tot <- 0
-  #beta_vec <- NULL
   epi_rate <- 0
   infection_red_rate <- 0
   infection_blue_rate <- 0
 
   if (isTRUE(params$runEpidemic)) {
 
-    #I_count <- sum(state$epi == I)
-    #prevalence <- state$I_count / params$n # global = random mixing
-
-    # Opinion camp-based infection rates
-    #beta_vec <- ifelse(state$opinions < 0, params$beta_red, params$beta_blue)
-
-    # Aggregate epidemic rates
-
-    # Infection: only for S individuals global random mixing.
-    #infection_rate_tot <- (state$I_count / params$n) * sum(beta_vec[state$S_nodes])
     infection_red_rate <-
       params$beta_red *
       length(state$S_red_nodes) *
@@ -135,10 +126,8 @@ compute_rates <- function(state, params){
       infection_red_rate +
       infection_blue_rate
 
-
     # Recovery: only for I individuals
     recovery_rate_tot  <- params$gamma_epi * state$I_count
-
     epi_rate <- infection_rate_tot + recovery_rate_tot
 
   }
@@ -146,7 +135,7 @@ compute_rates <- function(state, params){
   #==========================
   # Global state rate
   #==========================
-  # Each group has a params$lambda state rate
+  # Each group i has a  rate
   lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate +
     rate_radicalize_red + rate_radicalize_blue +
     rate_deradicalize_red + rate_deradicalize_blue +
@@ -155,6 +144,11 @@ compute_rates <- function(state, params){
   social_rate <- sum(lambda_i)
 
   lambda_tot <- social_rate + epi_rate
+
+
+  #==========================
+  # Return
+  #==========================
 
   list(
     voter_term = voter_term,
@@ -181,8 +175,7 @@ compute_rates <- function(state, params){
     epi_rate = epi_rate,
     lambda_tot = lambda_tot,
 
-    enabled_moves = enabled_moves#,
-    #beta_vec = beta_vec
+    enabled_moves = enabled_moves
   )
 }
 
