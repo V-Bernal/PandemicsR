@@ -25,16 +25,23 @@ ui <- fluidPage(
       # Section 1: Parameters
       wellPanel(
         h4("Network parameters"),
-        numericInput("n", "Number of individuals", value = 15, min = 5),
-        numericInput("m", "Number of groups", value = 3, min = 2),
-        numericInput("timesteps", "Gillespie max time", value = 100, max = 10000),
-        numericInput("lambda", "RIG weight parameter lambda", value = 1, min = 0)
-      ),
+        fluidRow(
+          column(6, numericInput( "n", "Individuals", value = 15) ),
+          column(6, numericInput("m", "Groups", value = 3) )
+          ),
+        
+        fluidRow(column(6, numericInput("timesteps", "Max Gillespie time", value = 100)),
+          column(6,numericInput("lambda", "RIG weight (lambda) ",value = 1)) )
+              ),
 
       # Section 2: Schelling
       wellPanel(
         h4("Schelling model"),
         checkboxInput("runSchelling", "Schelling model", value = FALSE),
+        
+        conditionalPanel(
+          condition = "input.runSchelling",
+          
         sliderInput("c_param", "join group rate c", min = 0, step = 0.01, max = 1, value = 0.4),
 
         h6("*to scale the join rate: tick the box"),
@@ -43,12 +50,16 @@ ui <- fluidPage(
 
         sliderInput("beta_plus", "leave rate above tolerance", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "leave rate below tolerance", min = 0, step = 0.01, max = 1, value = 0.2),
-        sliderInput("T_threshold", "tolerance threshold", min = 0, step = 0.01, max = 1, value = 0.3)        ),
+        sliderInput("T_threshold", "tolerance threshold", min = 0, step = 0.01, max = 1, value = 0.3)        )
+        ),
 
       # Section 3: Voter
       wellPanel(
         h4("Voter's model"),
         checkboxInput("runVoter", "Voter model", value = FALSE),
+        
+        conditionalPanel(
+          condition = "input.runVoter",
         #sliderInput("kappa", "Voter: Poisson rate for opinion update kappa", min = 0, step = 0.01, max = 1, value = 0.3),
         sliderInput("gamma", "Opinions rate", min = 0, step = 0.1, max = 100, value = 5),
         sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
@@ -59,18 +70,23 @@ ui <- fluidPage(
         sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.01, max = 1, value = 0),
         h6("* for stubborn opinions: set de-radicalization to zero"),
         sliderInput("alpha0", "spontaneous (de)-radicalization rate", min = 0, step = 0.01, max = 1, value = 0)
-
-      ),
+        )
+        ),
 
       # Section 5: Epidemics
       wellPanel(
         h4("Epidemics model"),
         checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
+        
+        conditionalPanel(
+          
+        condition = "input.runEpidemic",
         sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
-        sliderInput("gamma_epi", "Epidemic: recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
-        sliderInput("beta_red", "Epidemic: infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
-        sliderInput("beta_blue", "Epidemic: infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
-      ),
+        sliderInput("gamma_epi", "Recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
+        sliderInput("beta_red", "Infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
+        sliderInput("beta_blue", "Infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
+        
+        ),
       
       # Section 5.1: Epidemics activation
       wellPanel(
@@ -104,8 +120,8 @@ ui <- fluidPage(
         numericInput(
           "epi_events",
           "Number of warm-up events:",
-          value = 10000,
-          min = 0
+          value = 0,
+          min = 0, max = 0
         )
       ),
       
@@ -114,8 +130,8 @@ ui <- fluidPage(
         numericInput(
           "epi_events_node",
           "Warm-up events per node:",
-          value = 20,
-          min = 1
+          value = 0,
+          min = 1, max = 1
         )
       ),
       
@@ -124,8 +140,8 @@ ui <- fluidPage(
         numericInput(
           "epi_epsilon_opinion",
           "Opinion change threshold:",
-          value = 0.001,
-          min = 0
+          value = 0,
+          min = 0, max = 0
         )
       ),
       
@@ -134,11 +150,13 @@ ui <- fluidPage(
         numericInput(
           "epi_epsilon_seg",
           "Segregation change threshold:",
-          value = 0.001,
-          min = 0
+          value = 0,
+          min = 0, max = 0
         )
       )
-      ),
+      )
+      )
+      ,
       # Section 6: Visualization
       wellPanel(
         h4("Visualization"),
