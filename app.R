@@ -46,7 +46,7 @@ ui <- fluidPage(
 
         h6("*to scale the join rate: tick the box"),
         checkboxInput("scaled_n", "scaled by N", value = FALSE),
-        checkboxInput("scaled_m", "scaled by m", value = FALSE),
+        #checkboxInput("scaled_m", "scaled by m", value = FALSE),
 
         sliderInput("beta_plus", "leave rate above tolerance", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "leave rate below tolerance", min = 0, step = 0.01, max = 1, value = 0.2),
