@@ -84,7 +84,7 @@ init_trackers <- function(params, opinions) {
   trackers
 }
 
-
+#-----------------------------
 update_trackers <- function(trackers, state, t, params) {
 
   trackers$opinion_history[,2] <- state$opinions
