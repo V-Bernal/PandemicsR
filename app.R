@@ -229,6 +229,9 @@ ui <- fluidPage(
 
         ),
         tabPanel("Epidemic's dynamics",
+                 
+                 h4("Starting condition epidemics"),
+                 textOutput("startReasonEpi"),
 
 
                  h4("SIR overall"),
@@ -283,7 +286,7 @@ server <- function(input, output, session) {
     #   runEpidemic = FALSE,
     #   beta_red = 0.2,
     #   beta_blue = 0.2,
-    #   gamma_epi = 0.5
+    #   gamma_epi = 0.5,
     #   I0 = 0.5
     # )
 
@@ -312,6 +315,7 @@ server <- function(input, output, session) {
     
     #params$epi_trigger <- input$epi_trigger[input$epi_trigger == c("time", "events", "events_per_node", "opinion_stability", "segregation_stability")]
     params$epi_time <- input$epi_time
+    #params$epi_events <- input$epi_events
     
     # Simulation
     run_simulation(params)
@@ -409,6 +413,12 @@ server <- function(input, output, session) {
                           simData()$num_opinions, simData()$members) })
 
   # Epidemic layer
+  # Starting reason
+  output$startReasonEpi <- renderText({
+    req(simData())
+    paste("Epidemics started by stability:", simData()$stable)
+  })
+  
   output$SIR1 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
