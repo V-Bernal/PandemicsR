@@ -43,18 +43,20 @@ gillespie_step <- function(state, params, t){
     )
 
     if (!is.null(event)){
+
       state <- apply_social_move(
         state,
         event$move,
         event$group,
         params
       )
-    }
+
+      }
 
   } else {
 
     # Check epidemic activation
-    if( t >= params$epi_time){
+    if( t >= params$epi_time || isTRUE(state$stable)){
       state <- apply_epidemic_event(
         state,
         rates,
