@@ -102,7 +102,7 @@ apply_social_move <- function(state, move, group_i, params) {
 
   }
 
-  state
+  return(state)
 }
 
 
@@ -152,8 +152,11 @@ join_group <- function(state, group_i, params){
 
   state$in_group[chosen] <- TRUE
 
+  # tracker warm up
+  state$membership_changes <-
+    state$membership_changes + 1
 
-  state
+  return(state)
 }
 
 #---------------------------------------------------------
@@ -211,7 +214,11 @@ leave_red<- function(state, group_i, params){
   state$in_group[chosen] <-
     length(state$groups_of_individual[[chosen]]) > 0
 
-  state
+  # tracker warm up
+  state$membership_changes <-
+    state$membership_changes + 1
+
+  return(state)
 }
 
 
@@ -270,7 +277,11 @@ leave_blue <- function(state, group_i){
   state$in_group[chosen] <-
     length(state$groups_of_individual[[chosen]]) > 0
 
-  state
+  # tracker warm up
+  state$membership_changes <-
+    state$membership_changes + 1
+
+  return(state)
 }
 
 
@@ -326,8 +337,11 @@ leave_extreme_red <- function(state, group_i){
   state$in_group[chosen] <-
     length(state$groups_of_individual[[chosen]]) > 0
 
+  # tracker warm up
+  state$membership_changes <-
+    state$membership_changes + 1
 
-  state
+  return(state)
 }
 
 
@@ -381,8 +395,11 @@ leave_extreme_blue <- function(state, group_i){
   state$in_group[chosen] <-
     length(state$groups_of_individual[[chosen]]) > 0
 
+  # tracker warm up
+  state$membership_changes <-
+    state$membership_changes + 1
 
-  state
+  return(state)
 }
 
 
@@ -436,7 +453,11 @@ red_to_blue <- function(state, group_i){
       c(state$S_blue_nodes, chosen)
   }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
 
 
@@ -485,7 +506,11 @@ blue_to_red <- function(state, group_i){
         c(state$S_red_nodes, chosen)
     }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
 
 
@@ -530,7 +555,11 @@ radicalize_red <- function(state, group_i){
     }
   }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
 
 
@@ -575,7 +604,11 @@ radicalize_blue <- function(state, group_i){
     }
   }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
 
 
@@ -612,7 +645,11 @@ deradicalize_red <- function(state, group_i){
     state$Ei_red[g] <- state$Ei_red[g]-1
   }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
 
 
@@ -648,5 +685,9 @@ deradicalize_blue <- function(state, group_i){
     state$Ei_blue[g] <- state$Ei_blue[g]-1
   }
 
-  state
+  # tracker warm up
+  state$opinion_changes <-
+    state$opinion_changes + 1
+
+  return(state)
 }
