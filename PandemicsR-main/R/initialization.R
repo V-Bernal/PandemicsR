@@ -292,7 +292,7 @@ finalize_output <- function(
     # Opinion history
     #-----------------------
     frac_mat =
-      tracker_output$frac_mat,
+      cbind(tracker_output$time_hist,tracker_output$frac_mat),
 
 
     #-----------------------
