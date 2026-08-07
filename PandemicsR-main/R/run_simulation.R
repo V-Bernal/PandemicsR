@@ -20,6 +20,7 @@ run_simulation <- function(params) {
     opinion_state$opinions,
     params
   )
+
   # Epidemic (optional)
   epi_state <- NULL
 
@@ -36,6 +37,7 @@ run_simulation <- function(params) {
   # Build global state
   #==========================
   state <- list(
+
     opinions = opinion_state$opinions,
 
     members = group_state$members,
@@ -59,6 +61,17 @@ run_simulation <- function(params) {
     in_group = logical(params$n)
   )
 
+  #===========
+  # add tracker of warm up
+  # NEW: epidemic warm-up tracking
+  state$events <- 0
+  state$opinion_changes <- 0
+  state$membership_changes <- 0
+  state$stable <- FALSE
+  state$stable_windows <- 0
+  t0 <-0
+  #===========
+
   # Add epidemic state if active
   if (!is.null(epi_state)) {
 
@@ -79,7 +92,7 @@ run_simulation <- function(params) {
   # 2. Gillespie loop
   #==========================
 
-    # Gillespie algorithm
+  # Gillespie algorithm
   start_time <- Sys.time()
   t <- 0
   stop_reason <- "Reached maximum time"
@@ -87,12 +100,12 @@ run_simulation <- function(params) {
   while (t < params$t_max) {
 
     # Stopping criteria
-    stop <- check_stopping(state, params)
+    #stop <- check_stopping(state, params)
 
-    if (stop$stop) {
-      stop_reason <- stop$reason
-      break
-    }
+    # if (stop$stop) {
+    #   stop_reason <- stop$reason
+    #   break
+    # }
 
     # Gillespie step
     step <- gillespie_step(
@@ -106,6 +119,16 @@ run_simulation <- function(params) {
 
     if(step$stop)
       break
+
+    #======= check warm up track reset every record_every
+    check_stable <- check_stability(state, t, t0)
+    state <- check_stable[[1]]
+    t0 <- check_stable[[2]]
+
+    if(isTRUE(state$stable)){
+      print('stability reached')
+    }
+    #=======
 
     # ---- record step ----
     trackers$event_counter <- trackers$event_counter + 1
@@ -122,13 +145,11 @@ run_simulation <- function(params) {
       )
 
       }
-        } # end gillespie
+  }
+
+  # end gillespie
   end_time <- Sys.time()
   comp_time <- end_time - start_time
-
-  # tracker_results <- finalize_trackers(
-  #   trackers,
-  #   params)
 
   #==========================
   # Output
