@@ -30,7 +30,7 @@ ui <- fluidPage(
           column(6, numericInput("m", "Groups", value = 3) )
           ),
         
-        fluidRow(column(6, numericInput("timesteps", "Max Gillespie time", value = 100)),
+        fluidRow(column(6, numericInput("timesteps", "Max time", value = 100)),
           column(6,numericInput("lambda", "RIG weight (lambda) ",value = 1)) )
               ),
 
@@ -42,10 +42,10 @@ ui <- fluidPage(
         conditionalPanel(
           condition = "input.runSchelling",
           
-        sliderInput("c_param", "join group rate c", min = 0, step = 0.01, max = 1, value = 0.4),
+        sliderInput("c_param", "join group rate c", min = 0, step = 0.1, max = 1000, value = 1),
 
-        h6("*to scale the join rate: tick the box"),
-        checkboxInput("scaled_n", "scaled by N", value = FALSE),
+        # h6("*to scale the join rate: tick the box"),
+        # checkboxInput("scaled_n", "scaled by N", value = FALSE),
         #checkboxInput("scaled_m", "scaled by m", value = FALSE),
 
         sliderInput("beta_plus", "leave rate above tolerance", min = 0, step = 0.01, max = 1, value = 0.5),
@@ -66,10 +66,10 @@ ui <- fluidPage(
 
         # Section 4: Extremes
         #h5("Extremes"),
-        sliderInput("alpha", "radicalization rate", min = 0, step = 0.01, max = 1, value = 0.1),
-        sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.01, max = 1, value = 0),
+        sliderInput("alpha", "radicalization rate", min = 0, step = 0.1, max = 1000, value = 1),
+        sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.1, max = 1000, value = 1),
         h6("* for stubborn opinions: set de-radicalization to zero"),
-        sliderInput("alpha0", "spontaneous (de)-radicalization rate", min = 0, step = 0.01, max = 1, value = 0)
+        sliderInput("alpha0", "spontaneous (de)-radicalization rate", min = 0, step = 0.1, max = 1000, value = 0)
         )
         ),
 
@@ -82,9 +82,9 @@ ui <- fluidPage(
           
         condition = "input.runEpidemic",
         sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
-        sliderInput("gamma_epi", "Recovery rate", min = 0, step = 0.01, max = 1, value = 0.3),
-        sliderInput("beta_red", "Infection rate red", min = 0, step = 0.01, max = 1, value = 0.5),
-        sliderInput("beta_blue", "Infection rate blue", min = 0, step = 0.01, max = 1, value = 0.2)
+        sliderInput("gamma_epi", "Recovery rate", step = 0.1, max = 1000, value = 1),
+        sliderInput("beta_red", "Infection rate red", min = 0, step = 0.1, max = 1000, value = 1),
+        sliderInput("beta_blue", "Infection rate blue", min = 0, step = 0.1, max = 1000, value = 1)
         
         ),
       
