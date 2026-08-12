@@ -40,13 +40,13 @@ compute_rates <- function(state, params){
   if (isTRUE(params$runSchelling)) {
     # joining a group
     join_term <- params$c_param * sapply(state$outsiders, length) * sapply(state$members, length)
-
-    if (isTRUE(params$scaled_n)) {
-      join_term <- join_term/params$n
-    }
-    if (isTRUE(params$scaled_m)) {
-      join_term <- join_term/params$m
-    }
+    join_term <- join_term/params$n
+    # if (isTRUE(params$scaled_n)) {
+    #   join_term <- join_term/params$n
+    # }
+    # if (isTRUE(params$scaled_m)) {
+    #   join_term <- join_term/params$m
+    # }
 
     # leaving a group rates: The rate of leaving a group is B+ or B- depending on the threshold
     frac_red <- ifelse(Tot > 0, state$Ri / Tot, 0)
@@ -112,6 +112,7 @@ compute_rates <- function(state, params){
 
   if (isTRUE(params$runEpidemic)) {
 
+    # infection is independent of the opinion/social network
     infection_red_rate <-
       params$beta_red *
       length(state$S_red_nodes) *
