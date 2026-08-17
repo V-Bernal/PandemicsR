@@ -69,11 +69,11 @@ compute_rates <- function(state, params){
 
     factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
 
-    rate_radicalize_red  <- (params$alpha0 + params$alpha * state$Ei_red * factor ) * state$Ri
-    rate_radicalize_blue <- (params$alpha0 + params$alpha * state$Ei_blue * factor )* state$Bi
+    rate_radicalize_red  <- (params$alpha0_rad + params$alpha * state$Ei_red * factor ) * state$Ri
+    rate_radicalize_blue <- (params$alpha0_rad + params$alpha * state$Ei_blue * factor )* state$Bi
 
-    rate_deradicalize_red  <- (params$alpha0 + params$alpha_deradicalization * state$Ei_red * factor) * state$Ri
-    rate_deradicalize_blue <- (params$alpha0 + params$alpha_deradicalization * state$Ei_blue * factor) * state$Bi
+    rate_deradicalize_red  <- (params$alpha0_derad + params$alpha_deradicalization * state$Ei_red * factor) * state$Ri
+    rate_deradicalize_blue <- (params$alpha0_derad + params$alpha_deradicalization * state$Ei_blue * factor) * state$Bi
 
   }
 
@@ -113,20 +113,44 @@ compute_rates <- function(state, params){
   if (isTRUE(params$runEpidemic)) {
 
     # infection is independent of the opinion/social network
+    # infection_red_rate <-
+    #   params$beta_red *
+    #   length(state$S_red_nodes) *
+    #   state$I_count / params$n
+    #
+    # infection_blue_rate <-
+    #   params$beta_blue *
+    #   length(state$S_blue_nodes) *
+    #   state$I_count / params$n
+
+    #================================
+    # to do: infection DEPENDS on the 2 opinion/social network
+    # infection_red_rate <-
+    # (beta_rr I_r + beta_br I_b)Sr/N.
     infection_red_rate <-
-      params$beta_red *
+      (params$beta_red_red *
       length(state$S_red_nodes) *
-      state$I_count / params$n
+      length(state$I_red) +
+
+        params$beta_red_blue *
+        length(state$S_red_nodes) *
+        length(state$I_blue))/ params$n
 
     infection_blue_rate <-
-      params$beta_blue *
+      (params$beta_blue_red *
       length(state$S_blue_nodes) *
-      state$I_count / params$n
+      length(state$I_blue) +
 
+      params$beta_blue_blue *
+      length(state$S_blue_nodes) *
+      length(state$I_red))/ params$n
+
+    #================================
     infection_rate_tot <-
       infection_red_rate +
       infection_blue_rate
 
+    #================================
     # Recovery: only for I individuals
     recovery_rate_tot  <- params$gamma_epi * state$I_count
     epi_rate <- infection_rate_tot + recovery_rate_tot
