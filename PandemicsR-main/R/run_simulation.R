@@ -100,12 +100,12 @@ run_simulation <- function(params) {
   while (t < params$t_max) {
 
     # Stopping criteria
-    #stop <- check_stopping(state, params)
+    stop <- check_stopping(state, params)
 
-    # if (stop$stop) {
-    #   stop_reason <- stop$reason
-    #   break
-    # }
+    if (stop$stop) {
+      stop_reason <- stop$reason
+      break
+    }
 
     # Gillespie step
     step <- gillespie_step(
@@ -121,13 +121,13 @@ run_simulation <- function(params) {
       break
 
     #======= check warm up track reset every record_every
-    check_stable <- check_stability(state, t, t0)
-    state <- check_stable[[1]]
-    t0 <- check_stable[[2]]
+    #check_stable <- check_stability(state, t, t0)
+    #state <- check_stable[[1]]
+    #t0 <- check_stable[[2]]
 
-    if(isTRUE(state$stable)){
-      print('stability reached')
-    }
+    #if(isTRUE(state$stable)){
+    #  print('stability reached')
+    #}
     #=======
 
     # ---- record step ----
