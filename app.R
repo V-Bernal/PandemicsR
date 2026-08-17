@@ -68,8 +68,9 @@ ui <- fluidPage(
         #h5("Extremes"),
         sliderInput("alpha", "radicalization rate", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.1, max = 1000, value = 1),
-        h6("* for stubborn opinions: set de-radicalization to zero"),
-        sliderInput("alpha0", "spontaneous (de)-radicalization rate", min = 0, step = 0.1, max = 1000, value = 0)
+        h6("*stubborn opinions: set de-radicalization to zero"),
+        sliderInput("alpha0_rad", "spontaneous radicalization rate", min = 0, step = 0.1, max = 1000, value = 0),
+        sliderInput("alpha0_derad", "spontaneous deradicalization rate", min = 0, step = 0.1, max = 1000, value = 0)
         )
         ),
 
@@ -82,9 +83,13 @@ ui <- fluidPage(
           
         condition = "input.runEpidemic",
         sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
-        sliderInput("gamma_epi", "Recovery rate", step = 0.1, max = 1000, value = 1),
-        sliderInput("beta_red", "Infection rate red", min = 0, step = 0.1, max = 1000, value = 1),
-        sliderInput("beta_blue", "Infection rate blue", min = 0, step = 0.1, max = 1000, value = 1)
+        sliderInput("gamma_epi", "Recovery rate", min = 0.00, step = 0.1, max = 1000, value = 1),
+        #sliderInput("beta_red", "Infection rate red", min = 0, step = 0.1, max = 1000, value = 1),
+        #sliderInput("beta_blue", "Infection rate blue", min = 0, step = 0.1, max = 1000, value = 1)#,
+        sliderInput("beta_red_red", "Infection rate red-red", min = 0, step = 0.1, max = 1000, value = 1),
+        sliderInput("beta_blue_blue", "Infection rate blue-blue", min = 0, step = 0.1, max = 1000, value = 1),
+        sliderInput("beta_red_blue", "Infection rate red-blue", min = 0, step = 0.1, max = 1000, value = 1),
+        sliderInput("beta_blue_red", "Infection rate blue-red", min = 0, step = 0.1, max = 1000, value = 1)
         
         ),
       
@@ -280,14 +285,20 @@ server <- function(input, output, session) {
     #   c_param = 0.4,
     #   alpha = 0.5,
     #   alpha_deradicalization = 0.5,
-    #   alpha0 = 0.5,
-    #   runVoter = TRUE,
-    #   runSchelling = TRUE,
-    #   runEpidemic = FALSE,
+    #   alpha0_rad = 0.1,
+    #   alpha0_derad = 0.1,
+    #   runVoter = FALSE,
+    #   runSchelling = FALSE,
+    #   runEpidemic = TRUE,
+    #   beta_red_red = 0.2,
+    #   beta_blue_red = 0.2,
+    #   beta_red_blue = 0.2,
+    #   beta_blue_blue = 0.2,
     #   beta_red = 0.2,
     #   beta_blue = 0.2,
     #   gamma_epi = 0.5,
-    #   I0 = 0.5
+    #   I0 = 0.5,
+    #   epi_time = 0
     # )
 
     params <- list(
@@ -303,18 +314,24 @@ server <- function(input, output, session) {
       num_opinions = input$Numopinions,
       alpha = input$alpha,
       alpha_deradicalization = input$alpha_deradicalization,
-      alpha0 = input$alpha0,
+      alpha0_rad = input$alpha0_rad,
+      alpha0_derad = input$alpha0_derad,
       runEpidemic = input$runEpidemic,
       runVoter = input$runVoter,
       runSchelling = input$runSchelling,
-      beta_red = input$beta_red,
-      beta_blue = input$beta_blue,
+      beta_red_red = input$beta_red_red,
+      beta_blue_red = input$beta_blue_red,
+      beta_red_blue = input$beta_red_blue,
+      beta_blue_blue = input$beta_blue_blue,
+      #beta_red = input$beta_red,
+      #beta_blue = input$beta_blue,
       gamma_epi = input$gamma_epi,
-      I0 = input$I0
+      I0 = input$I0,
+      epi_time =input$epi_time
     )
     
     #params$epi_trigger <- input$epi_trigger[input$epi_trigger == c("time", "events", "events_per_node", "opinion_stability", "segregation_stability")]
-    params$epi_time <- input$epi_time
+    #params$epi_time <- input$epi_time
     #params$epi_events <- input$epi_events
     
     # Simulation
