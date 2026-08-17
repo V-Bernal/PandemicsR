@@ -55,8 +55,8 @@ gillespie_step <- function(state, params, t){
 
   } else {
 
-    # Check epidemic activation
-    if( t >= params$epi_time || isTRUE(state$stable)){
+    # Check epidemic activation || isTRUE(state$stable)
+    if( t >= params$epi_time){
       state <- apply_epidemic_event(
         state,
         rates,
