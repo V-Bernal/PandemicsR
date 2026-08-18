@@ -1,6 +1,6 @@
 check_stopping <- function(state, params) {
 
-  if (isTRUE(params$runEpidemic)) {
+  if (state$epidemic_started) {
 
     if (state$I_count == 0) {
       return(list(
