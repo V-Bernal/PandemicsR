@@ -1,3 +1,9 @@
+#' Gillespie step
+#'
+#' @param params Simulation parameters.
+#' @state state
+#' @t time
+#' @export
 gillespie_step <- function(state, params, t){
 
   #==========================
@@ -55,8 +61,8 @@ gillespie_step <- function(state, params, t){
 
   } else {
 
-    # Check epidemic activation || isTRUE(state$stable)
-    if( t >= params$epi_time){
+    # Check epidemic activation
+    if( state$epidemic_started ){
       state <- apply_epidemic_event(
         state,
         rates,

@@ -442,7 +442,7 @@ red_to_blue <- function(state, group_i){
     }
   }
 
-  if (!is.null(state$epi) && state$epi[chosen] == state$S) {
+  if ( state$epidemic_started && state$epi[chosen] == state$S) {
 
     # Remove from susceptible red
     state$S_red_nodes <-
@@ -495,7 +495,7 @@ blue_to_red <- function(state, group_i){
     }
   }
 
-  if (!is.null(state$epi) && state$epi[chosen] == state$S) {
+  if (state$epidemic_started && state$epi[chosen] == state$S) {
 
       # Remove from susceptible blue
       state$S_blue_nodes <-

@@ -1,8 +1,11 @@
+#' Rates
+#'
+#' @param params Simulation parameters.
+#' @state state
+#' @export
 compute_rates <- function(state, params){
 
-  #==========================
-  # moves
-  #==========================
+  # permitted moves
   enabled_moves <- integer(0)
 
   if (params$runVoter)
@@ -17,49 +20,46 @@ compute_rates <- function(state, params){
   if (params$runSchelling && params$num_opinions == 4)
     enabled_moves <- c(enabled_moves, 10, 11)
 
-  #==========================
-  # Voter's rate of interaction among moderates
-  #==========================
+  #--------------
+  # Voter's rate among moderates
+  #--------------
   voter_term <- numeric(params$m)
 
-  Tot <- state$Ri + state$Bi # moderate_total
-  Tot_g <- sapply(state$members, length) # group_size
+  Tot <- state$Ri + state$Bi
+  Tot_g <- sapply(state$members, length)
 
   if (isTRUE(params$runVoter)) {
-    valid <- (state$Ri > 0 & state$Bi > 0) #Tot >= 2
+    valid <- (state$Ri > 0 & state$Bi > 0)
     voter_term[valid] <- params$gamma * (state$Ri[valid] * state$Bi[valid] / Tot[valid])
   }
 
-  #==========================
-  # Schelling rates
-  ##==========================
+  #--------------
+  # Schelling rates groups
+  #--------------
   join_term <- numeric(params$m)
   leaveR_rate <- numeric(params$m)
   leaveB_rate <- numeric(params$m)
 
   if (isTRUE(params$runSchelling)) {
+
     # joining a group
     join_term <- params$c_param * sapply(state$outsiders, length) * sapply(state$members, length)
     join_term <- join_term/params$n
-    # if (isTRUE(params$scaled_n)) {
-    #   join_term <- join_term/params$n
-    # }
-    # if (isTRUE(params$scaled_m)) {
-    #   join_term <- join_term/params$m
-    # }
 
-    # leaving a group rates: The rate of leaving a group is B+ or B- depending on the threshold
+    # leaving a group rates
     frac_red <- ifelse(Tot > 0, state$Ri / Tot, 0)
     frac_blue <- ifelse(Tot > 0, state$Bi / Tot, 0)
 
+    # The rate of leaving a group is B+ or B- depending on the threshold
     leaveR_rate <- ifelse(frac_red < params$T_threshold, params$beta_plus * state$Ri, params$beta_minus * state$Ri)
     leaveB_rate <- ifelse(frac_blue < params$T_threshold, params$beta_plus * state$Bi, params$beta_minus * state$Bi)
 
   }
 
-  #==========================
+  #--------------
+  # 4 opinion model
+  #--------------
   # de-radicalization rates
-  #==========================
   rate_radicalize_red  <- numeric(params$m)
   rate_radicalize_blue <- numeric(params$m)
   rate_deradicalize_red <- numeric(params$m)
@@ -68,19 +68,13 @@ compute_rates <- function(state, params){
   if (params$runVoter && params$num_opinions == 4) {
 
     factor <- ifelse(Tot_g > 0, 1 / Tot_g, 0)
-
     rate_radicalize_red  <- (params$alpha0_rad + params$alpha * state$Ei_red * factor ) * state$Ri
     rate_radicalize_blue <- (params$alpha0_rad + params$alpha * state$Ei_blue * factor )* state$Bi
-
     rate_deradicalize_red  <- (params$alpha0_derad + params$alpha_deradicalization * state$Ei_red * factor) * state$Ri
     rate_deradicalize_blue <- (params$alpha0_derad + params$alpha_deradicalization * state$Ei_blue * factor) * state$Bi
-
   }
 
-  #==========================
   # Leave rates radicals
-  #==========================
-
   leaveR_rate_extreme <- numeric(params$m)
   leaveB_rate_extreme <- numeric(params$m)
 
@@ -101,9 +95,9 @@ compute_rates <- function(state, params){
 
   }
 
-  #==========================
+  #--------------
   # Epidemic rates
-  #==========================
+  #--------------
   infection_rate_tot <- 0
   recovery_rate_tot <- 0
   epi_rate <- 0
@@ -112,21 +106,7 @@ compute_rates <- function(state, params){
 
   if (isTRUE(params$runEpidemic)) {
 
-    # infection is independent of the opinion/social network
-    # infection_red_rate <-
-    #   params$beta_red *
-    #   length(state$S_red_nodes) *
-    #   state$I_count / params$n
-    #
-    # infection_blue_rate <-
-    #   params$beta_blue *
-    #   length(state$S_blue_nodes) *
-    #   state$I_count / params$n
-
-    #================================
-    # to do: infection DEPENDS on the 2 opinion/social network
-    # infection_red_rate <-
-    # (beta_rr I_r + beta_br I_b)Sr/N.
+    # infection is dependent of the opinion/social network
     infection_red_rate <-
       (params$beta_red_red *
       length(state$S_red_nodes) *
@@ -145,22 +125,19 @@ compute_rates <- function(state, params){
       length(state$S_blue_nodes) *
       length(state$I_red))/ params$n
 
-    #================================
     infection_rate_tot <-
       infection_red_rate +
       infection_blue_rate
 
-    #================================
     # Recovery: only for I individuals
     recovery_rate_tot  <- params$gamma_epi * state$I_count
     epi_rate <- infection_rate_tot + recovery_rate_tot
 
   }
 
-  #==========================
-  # Global state rate
-  #==========================
-  # Each group i has a  rate
+  #--------------
+  # Global state rate. Each group i has a rate
+  #--------------
   lambda_i <- voter_term + join_term + leaveR_rate + leaveB_rate +
     rate_radicalize_red + rate_radicalize_blue +
     rate_deradicalize_red + rate_deradicalize_blue +
@@ -171,9 +148,9 @@ compute_rates <- function(state, params){
   lambda_tot <- social_rate + epi_rate
 
 
-  #==========================
+  #--------------
   # Return
-  #==========================
+  #--------------
 
   list(
     voter_term = voter_term,

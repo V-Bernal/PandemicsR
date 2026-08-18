@@ -21,18 +21,6 @@ run_simulation <- function(params) {
     params
   )
 
-  # Epidemic (optional)
-  epi_state <- NULL
-
-  if (isTRUE(params$runEpidemic)) {
-
-    epi_state <- init_epidemic(
-      params,
-      opinion_state$opinions
-    )
-
-  }
-
   #==========================
   # Build global state
   #==========================
@@ -61,26 +49,25 @@ run_simulation <- function(params) {
     in_group = logical(params$n)
   )
 
+  # epidemic state
+  # epi_state <- init_epidemic(
+  #   params,
+  #   opinion_state$opinions
+  # )
+  #
+  # state <- c(
+  #   state,
+  #   epi_state
+  # )
+
+  state$epidemic_started <- FALSE
+  stability_monitor <- create_stability_monitor(
+    window = params$t_max/20,
+    threshold = 0.01,
+    persistence = 5
+  )
+
   #===========
-  # add tracker of warm up
-  # NEW: epidemic warm-up tracking
-  state$events <- 0
-  state$opinion_changes <- 0
-  state$membership_changes <- 0
-  state$stable <- FALSE
-  state$stable_windows <- 0
-  t0 <-0
-  #===========
-
-  # Add epidemic state if active
-  if (!is.null(epi_state)) {
-
-    state <- c(
-      state,
-      epi_state
-    )
-
-  }
 
   # Trackers
   trackers <- init_trackers(
@@ -120,14 +107,33 @@ run_simulation <- function(params) {
     if(step$stop)
       break
 
-    #======= check warm up track reset every record_every
-    #check_stable <- check_stability(state, t, t0)
-    #state <- check_stable[[1]]
-    #t0 <- check_stable[[2]]
+    # New Check stability
+    stability_monitor <- update_stability(
+      stability_monitor,
+      state,
+      time = t
+    )
 
-    #if(isTRUE(state$stable)){
-    #  print('stability reached')
-    #}
+    # Start epidemic once social system is stable
+    if (!state$epidemic_started && isTRUE(params$runEpidemic)){
+
+      state$epidemic_started <- stability_monitor$is_stable
+
+      if (state$epidemic_started) {
+
+          epi_state <- init_epidemic(
+            params,
+            opinion_state$opinions
+          )
+
+          state <- c(
+            state,
+            epi_state
+          )
+
+        }
+    }
+
     #=======
 
     # ---- record step ----
