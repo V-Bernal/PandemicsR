@@ -142,7 +142,7 @@ ui <- fluidPage(
           numericInput(
             "epi_time",
             "Epidemic start time:",
-            value = 10,
+            value = 0,
             min = 0,
             step = 1
           )
