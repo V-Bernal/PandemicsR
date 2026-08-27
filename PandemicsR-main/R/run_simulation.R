@@ -193,6 +193,7 @@ run_simulation <- function(params) {
       comp_time,
       trackers$event_counter
     )
+  print(result )
 
     return(result)
 }
