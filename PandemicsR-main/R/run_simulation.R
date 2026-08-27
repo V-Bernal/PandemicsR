@@ -71,8 +71,8 @@ run_simulation <- function(params) {
   # Stability if only epidemics start it immideitely
   #===========
   state$epidemic_started <- FALSE
-  state$epidemic_started <- isTRUE(params$runEpidemic) && !isTRUE(params$runVoter) &&
-      !isTRUE(params$runSchelling)
+  #state$epidemic_started <- isTRUE(params$runEpidemic) && !isTRUE(params$runVoter) &&
+  #    !isTRUE(params$runSchelling)
 
 
   stability_monitor <- create_stability_monitor(
@@ -98,15 +98,7 @@ run_simulation <- function(params) {
   stop_reason <- "Reached maximum time"
 
   while (t < params$t_max) {
-    print(t)
-
-    # Stopping criteria by full polarization, or ended epidemic.
-    stop <- check_stopping(state, params)
-
-    if (stop$stop) {
-      stop_reason <- stop$reason
-      break
-    }
+    #print(t)
 
     # Gillespie step
     step <- gillespie_step(
@@ -127,16 +119,17 @@ run_simulation <- function(params) {
     # Check stability
 
     # Start epidemic by time
-    #if (params$epi_trigger == "time") {
-    #  print('start epi time')
-    #  stability_monitor$is_stable <- (t >= params$epi_time)
-    #}else{
+    if (params$epi_trigger == "time") {
+      print('start epi time')
+      stability_monitor$is_stable <- (t >= params$epi_time)
+      print(stability_monitor$is_stable)
+    }else{
       stability_monitor <- update_stability(
         stability_monitor,
         state,
         time = t
       )
-    #}
+    }
 
     if (
       !state$epidemic_started &&
@@ -145,7 +138,6 @@ run_simulation <- function(params) {
     ) {
 
       state$epidemic_started <- TRUE
-      print('initialize epidemics')
       #update epidemic status
       epi_state <- init_epidemic(
         params,
@@ -153,9 +145,15 @@ run_simulation <- function(params) {
       )
 
       state[names(epi_state)] <- epi_state
+    }
 
+    # Stopping criteria by full polarization, or ended epidemic.
+    stop <- check_stopping(state, params)
 
-        }
+    if (stop$stop) {
+      stop_reason <- stop$reason
+      break
+    }
 
     #=======
 
@@ -193,7 +191,8 @@ run_simulation <- function(params) {
       comp_time,
       trackers$event_counter
     )
-  print(result )
+
+  print(result)
 
     return(result)
 }

@@ -366,8 +366,8 @@ server <- function(input, output, session) {
         NULL
     )
     
-    print("PARAMETERS:")
-    print(p)
+    # print("PARAMETERS:")
+    # print(p)
     run_simulation(p)
   })
 
