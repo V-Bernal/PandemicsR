@@ -16,18 +16,6 @@ After installing the package, the vignettes can be accessed in R with:
 browseVignettes("PandemicsR")
 ```
 ---
-## Architecture
-Pipeline:
-1. Generate a random network (structure, opinion, and initial epidemic states)
-2. Generate network
-3. Assign individual attributes/opinions
-4. Run epidemic simulation
-5. Analyze outcomes
-
-Output:
-1.  Graphs: PDF (`.pdf`, `.jpg`, `.jpeg`)
-
----
 ## Install R package from GitHub 
 ```{r}
 install.packages("devtools")
@@ -37,6 +25,16 @@ install_github("V-Bernal/PandemicsR", subdir="PandemicsR-main")
 library(PandemicsR)
 shiny::runApp()
 ```
+## Architecture
+Pipeline:
+1. Generate a random network (structure, opinion, and initial epidemic states)
+2. Generate network
+3. Assign individual attributes/opinions
+4. Run epidemic simulation
+5. Analyze outcomes
+
+Output:
+Graphs: PDF (`.pdf`, `.jpg`, `.jpeg`)
 
 ## Project Structure
 ```text
