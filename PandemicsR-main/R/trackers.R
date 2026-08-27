@@ -49,6 +49,7 @@ init_trackers <- function(params, opinions) {
     ncol = 2
   )
   opinion_history[,1] <- opinions
+  opinion_history[,2] <- opinions
 
   trackers <- list(
 
