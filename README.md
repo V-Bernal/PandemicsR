@@ -32,8 +32,9 @@ install_github("V-Bernal/PandemicsR", subdir="PandemicsR-main")
 library(PandemicsR)
 shiny::runApp()
 ```
----
+
 ## Project Structure
+```text
 PandemicsR-main/
 ├── R/
 │   ├── network/
@@ -54,8 +55,9 @@ PandemicsR-main/
 ├── DESCRIPTION
 ├── NAMESPACE
 └── README.md
----
+```
 ## Model interaction
+```text
                  ┌─────────────────┐
                  │     Network     │
                  └────────┬────────┘
@@ -81,7 +83,7 @@ PandemicsR-main/
        Social state ───────────────► Epidemic transmission
        Epidemic state ─────────────► Social dynamics
 
----
+```
 ## Requirements
 - `R >= 4.3.0`
 - `igraph`
