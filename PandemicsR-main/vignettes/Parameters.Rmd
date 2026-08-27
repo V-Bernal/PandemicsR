@@ -113,3 +113,27 @@ The following objects are generated and maintained internally during the simulat
 - Membership changes modify both the bipartite network and the projected Random Intersection Graph.
 - Opinion changes are synchronized across all groups to which an individual belongs.
 - The exact set of internal variables may evolve as new features are added to the package.
+
+
+### Important corrections from your old version
+
+The most important changes are:
+
+1. **`epidemic_on` → `runEpidemic`**
+2. **`I0` is now a fraction**, not a number of infected individuals.
+3. Old `beta_red` / `beta_blue` parameters are replaced by the four parameters:
+   - `beta_red_red`
+   - `beta_red_blue`
+   - `beta_blue_red`
+   - `beta_blue_blue`
+4. `alpha0` has been split into:
+   - `alpha0_rad`
+   - `alpha0_derad`
+5. Add the three epidemic activation parameters:
+   - `epi_trigger`
+   - `epi_time`
+   - `stability_window`
+   - `stability_threshold`
+6. Add `runVoter` and `runSchelling`.
+7. The internal epidemic representation in your current code appears to use `epi` plus the red/blue node-index vectors, rather than the old `infected`, `susceptible`, `recovered`, `S`, `I`, `R` bookkeeping described in the old document.
+8. Your current defaults are those shown in the Shiny UI, so the old defaults such as `t_max = 1000`, `lambda = 0.2–0.5`, and `I0 = 1` should be removed.

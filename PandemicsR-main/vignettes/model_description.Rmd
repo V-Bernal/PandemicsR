@@ -30,11 +30,12 @@ and epidemic spreading interact and influence each other.
 The model combines three interacting processes:
 
 1. **Schelling model: a bipartite group membership dynamics**
-2. **Voters model: opinion dynamics model with 2 or 4 opinions**
+2. **Voter model: opinion dynamics model with 2 or 4 opinions**
 3. **Epidemic model: SIR epidemic spreading process**
 
-The three processes are coupled and evolve simultaneously in continuous time
-using a Gillespie stochastic simulation algorithm.
+The three processes are coupled and evolve as a continuous-time stochastic
+process using a Gillespie simulation algorithm. At each step, one event is
+selected from the currently active event types.
 
 The main assumption is that social organization, individual opinions, and
 epidemic states are not independent. Instead, they continuously influence each
@@ -48,7 +49,8 @@ The model relies on several assumptions:
 2. Individuals may belong to multiple groups simultaneously.
 3. Opinion updates occur only inside groups.
 4. Opinions are synchronized across all memberships of an individual.
-5. Epidemic transmission follows a mean-field prevalence approximation.
+5. Epidemic transmission depends on the opinion states of the interacting
+   individuals.
 6. Social and epidemic processes evolve on the same continuous-time scale.
 7. All transitions are memoryless stochastic events.
 
@@ -142,7 +144,8 @@ An individual's opinion is consistent across all groups to which they belong.
 
 Opinion updates occur only through interactions inside groups.
 
-For group $i$ define:
+For group $i$, let $R_i$ and $B_i$ denote the numbers of moderate Red and
+Blue individuals in the group.
 
 - $R_i$: number of moderate individuals with Red opinions,
 - $B_i$: number of moderate individuals with Blue opinions.
@@ -215,7 +218,12 @@ and
 +2 \rightarrow +1
 \]
 
-with rate controlled by the deradicalization parameter. Spontaneous radicalization is also implemented.
+Spontaneous (de-)radicalization is also implemented.
+There are two separate spontaneous radicalization deradicalization parameters. 
+
+- $\alpha_0^{rad}$ controls spontaneous radicalization.
+- $\alpha_0^{derad}$ controls spontaneous deradicalization.
+- $\alpha_{derad}$ controls interaction-based deradicalization.
 
 # Schelling membership dynamics
 
@@ -245,7 +253,6 @@ where:
 - $c$ controls group formation,
 - $N_{outside}$ is the number of individuals not belonging to the group.
 
-Note: The rate can be scale by population size n and/or the group size m.
 
 ## Leaving events
 
@@ -295,41 +302,20 @@ Initially, a set of individuals $I_0$ is randomly selected as infected.
 
 ## Infection dynamics
 
-Transmission follows a mean-field prevalence model.
+## Infection dynamics
 
-The infected prevalence is:
+Infection rates depend on the opinion states of the infectious and susceptible
+individuals.
 
-\[
-p_I=\frac{I}{n}
-\]
+Four transmission parameters are supported:
 
-A susceptible individual becomes infected at rate:
+- $\beta_{red,red}$: Red susceptible exposed to a Red infected individual.
+- $\beta_{red,blue}$: Red susceptible exposed to a Blue infected individual.
+- $\beta_{blue,red}$: Blue susceptible exposed to a Red infected individual.
+- $\beta_{blue,blue}$: Blue susceptible exposed to a Blue infected individual.
 
-\[
-r_{infection}
-=
-\beta
-\frac{I}{n}
-\]
-
-where:
-
-- $\beta$ is the transmission parameter.
-
-The model allows opinion-dependent infection rates:
-
-\[
-\beta_{negative}
-\]
-
-and
-
-\[
-\beta_{positive}
-\]
-
-Hence, epidemic susceptibility depends on opinion.
-
+Thus, infection rates can differ both by the opinion of the susceptible
+individual and by the opinion of the infectious individual.
 ## Recovery dynamics
 
 Recovery occurs independently at a fixed rate for infected individuals, regardless of opinion or membership status.
@@ -348,6 +334,28 @@ with rate:
 
 where $\gamma_{epi}$ controls the recovery process.
 
+## Epidemic activation
+
+The epidemic layer can be activated using one of two mechanisms.
+
+### Fixed-time activation
+
+The epidemic starts when the simulation time reaches the user-defined
+threshold:
+
+$$
+t \geq t_{epi}.
+$$
+
+The parameter $t_{epi}$ specifies the epidemic start time.
+
+### Stability-based activation
+
+Alternatively, the epidemic can be activated when the social system reaches
+the specified stability condition.
+
+The stability condition is evaluated over a user-defined time window and
+according to a user-defined stability threshold.
 # Gillespie simulation
 
 All processes are integrated using a continuous-time Gillespie algorithm.
@@ -363,14 +371,14 @@ At each Gillespie step:
 
 2. The total rate is \lambda_{\text{tot}} is computed by summing all enabled processes 
 \[
-\lambda_{\text{tot} =
+\lambda_{\text{tot}} =
 \sum_k r_k
 \]
 
 3. The waiting time until the next event is sampled:
 
 \[
-\Delta t \sim Exp(\lambda_{\text{tot})
+\Delta t \sim \operatorname{Exp}(\lambda_{\text{tot}})
 \]
 
 4. One event is sampled according to its relative rate  \lambda_{\text{i} to the total rate \lambda_{\text{tot}. The selected event updates the system state.

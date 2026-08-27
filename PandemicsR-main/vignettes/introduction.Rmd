@@ -25,11 +25,12 @@ and epidemic spreading interact and influence each other.
 The model combines three interacting processes:
 
 1. **Schelling model: a bipartite group membership dynamics**
-2. **Voters model: opinion dynamics model with 2 or 4 opinions**
+2. **Voter model: opinion dynamics model with 2 or 4 opinions**
 3. **Epidemic model: SIR epidemic spreading process**
 
-The three processes are coupled and evolve simultaneously in continuous time
-using a Gillespie stochastic simulation algorithm.
+The three processes are coupled and evolve as a continuous-time stochastic
+process using a Gillespie simulation algorithm. At each step, one event is
+selected from the currently active social, opinion, and epidemic events.
 
 
 # Model components
@@ -89,16 +90,34 @@ The epidemic process follows an SIR framework:
 Individuals initially infected are selected from the population, and infection
 and recovery events occur simultaneously with the social dynamics.
 
-The infection probability may depend on individual opinions, allowing different
-transmission parameters for different social groups.
+Infection rates depend on the opinion states of the infectious and susceptible
+individuals. The model therefore supports different transmission rates for
+red-red, red-blue, blue-red, and blue-blue interactions.
 
-For example, individuals with opposing opinions may have different infection
-rates:
-
-- $\beta_{negative}$
-- $\beta_{positive}$
+- $\beta_{red,red}$
+- $\beta_{red,blue}$
+- $\beta_{blue,red}$
+- $\beta_{blue,blue}$
 
 Recovery occurs at a fixed recovery rate.
+
+### Epidemic activation
+When the epidemic layer is activated, an initial fraction of the population is
+selected as infected. Infection and recovery events then become part of the
+Gillespie event process.
+
+The epidemic layer can be activated according to a user-defined condition.
+
+Two activation modes are supported:
+
+- **Fixed time:** the epidemic starts when simulation time reaches the
+  specified epidemic start time.
+- **Stability:** the epidemic starts when the specified opinion and
+  segregation stability condition is reached.
+
+This allows the epidemic to emerge either independently at a predetermined
+time or as a consequence of the preceding social dynamics.
+
 
 # Simulation framework
 
