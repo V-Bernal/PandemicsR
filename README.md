@@ -2,14 +2,19 @@
 An R package for simulating epidemic dynamics on networks.
 The simulation includes 3 layers: an opinion model, a Schelling model, and an Epidemic model.
 
-## Documentation
+## Documentation and Vignettes
 
-Detailed documentation is available in the package vignettes:
+The package includes detailed documentation in the form of R Markdown vignettes:
 
-- [Introduction](vignettes/introduction.Rmd)
-- [Model description](vignettes/model_description.Rmd)
-- [Parameters](vignettes/Parameters.Rmd)
+- **Introduction** – overview of the model and its components.
+- **Model description** – mathematical and conceptual description of the simulation.
+- **Parameters** – description of all user-defined and internal parameters.
+   
+After installing the package, the vignettes can be accessed in R with:
 
+```r
+browseVignettes("PandemicsR")
+```
 ---
 ## Architecture
 Pipeline:
