@@ -1,20 +1,19 @@
 #' Stability monitoring
-#'
+#' @param monitor
+#' @param state
+#' @param time
 #' @export
 # ------------------------------------------------------------
 # Stability monitoring
 # ------------------------------------------------------------
-
 create_stability_monitor <- function(
-    window = 100,
-    threshold = 0.01,
-    persistence = 5
+   window = stability_window,
+    threshold = stability_threshold
 ) {
 
   list(
     window = window,
     threshold = threshold,
-    persistence = persistence,
 
     history = list(),
     stable_windows = 0,
@@ -34,50 +33,33 @@ update_stability <- function(
 
   metrics <- calculate_stability_metrics(state)
 
+  # Add current observation
   monitor$history[[length(monitor$history) + 1]] <- list(
     time = time,
     metrics = metrics
   )
 
+  # Remove observations that are no longer needed
+  cutoff <- time - monitor$window
 
-  if(time > monitor$persistence * monitor$window){
-    monitor$history[1] <- NULL
-  }
+  monitor$history <- Filter(
+    function(x) x$time >= cutoff,
+    monitor$history
+  )
 
-  stability <- calculate_stability(
+  # Calculate stability over the window
+  monitor$is_stable <- calculate_stability(
     monitor$history,
     window = monitor$window,
     threshold = monitor$threshold
   )
 
-  if (stability) {
-    monitor$stable_windows <- monitor$stable_windows + 1
-  } else {
-    monitor$stable_windows <- 0
-  }
-
-  if (monitor$stable_windows >= monitor$persistence) {
-    monitor$is_stable <- TRUE
-  }
-
-  return(monitor)
+  monitor
 }
 # ------------------------------------------------------------
 # Generic metric extraction
 # ------------------------------------------------------------
-
 calculate_stability_metrics <- function(state) {
-
-  # Placeholder.
-  #
-  # Later we can plug in:
-  #   - mean opinion
-  #   - opinion variance
-  #   - number of groups
-  #   - largest group
-  #   - group-size distribution
-  #   - event rates
-  #   - etc.
 
   list(
     mean_opinion = mean(state$opinions),
@@ -85,49 +67,34 @@ calculate_stability_metrics <- function(state) {
   )
 }
 
-
-# ------------------------------------------------------------
-# Generic stability calculation
-# ------------------------------------------------------------
-
-calculate_stability <- function(
-    history,
-    window,
-    threshold
-) {
-  # Placeholder.
+#==============
+calculate_stability <- function(history, window, threshold) {
+  TRUE
+  # if (length(history) < 2)
+  #   return(FALSE)
   #
-  # Later this function decides what
-  # "stable" actually means.
-
-
-    if (length(history) < 2) {
-      return(FALSE)
-    }
-
-    times <- sapply(history, function(x) x$time)
-
-    current <- history[[length(history)]]
-
-    previous_index <- which(
-      times <= current$time - window
-    )
-
-    if (length(previous_index) == 0) {
-      return(FALSE)
-    }
-
-    previous <- history[[max(previous_index)]]
-
-    opinion_change <- abs(
-      current$metrics$mean_opinion -
-        previous$metrics$mean_opinion
-    )
-
-    groups_unchanged <-
-      current$metrics$n_groups ==
-      previous$metrics$n_groups
-
-    opinion_change < threshold &&
-      groups_unchanged
-  }
+  # current <- history[[length(history)]]
+  #
+  # times <- sapply(history, function(x) x$time)
+  #
+  # previous_index <- which(
+  #   times <= current$time - window
+  # )
+  #
+  # if (length(previous_index) == 0)
+  #   return(FALSE)
+  #
+  # previous <- history[[max(previous_index)]]
+  #
+  # opinion_change <- abs(
+  #   current$metrics$mean_opinion -
+  #     previous$metrics$mean_opinion
+  # )
+  #
+  # groups_unchanged <-
+  #   current$metrics$n_groups ==
+  #   previous$metrics$n_groups
+  #
+  # opinion_change < threshold &&
+  #   groups_unchanged
+}

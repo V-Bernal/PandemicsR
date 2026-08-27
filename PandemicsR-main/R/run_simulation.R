@@ -49,27 +49,40 @@ run_simulation <- function(params) {
     in_group = logical(params$n)
   )
 
-  # epidemic state
-  # epi_state <- init_epidemic(
-  #   params,
-  #   opinion_state$opinions
-  # )
-  #
-  # state <- c(
-  #   state,
-  #   epi_state
-  # )
+  #===========
+  # Epidemic (optional)
+  epi_state <- NULL
 
+  if (isTRUE(params$runEpidemic)) {
+
+    epi_state <- init_epidemic(
+      params,
+      opinion_state$opinions
+    )
+
+    state <- c(
+      state,
+      epi_state
+    )
+
+  }
+
+  #===========
+  # Stability if only epidemics start it immideitely
+  #===========
   state$epidemic_started <- FALSE
+  state$epidemic_started <- isTRUE(params$runEpidemic) && !isTRUE(params$runVoter) &&
+      !isTRUE(params$runSchelling)
+
+
   stability_monitor <- create_stability_monitor(
-    window = params$t_max/20,
-    threshold = 0.01,
-    persistence = 5
+    window = params$stability_window,
+    threshold = params$stability_threshold
   )
 
   #===========
-
   # Trackers
+  #===========
   trackers <- init_trackers(
     params,
     state$opinions
@@ -85,8 +98,9 @@ run_simulation <- function(params) {
   stop_reason <- "Reached maximum time"
 
   while (t < params$t_max) {
+    print(t)
 
-    # Stopping criteria
+    # Stopping criteria by full polarization, or ended epidemic.
     stop <- check_stopping(state, params)
 
     if (stop$stop) {
@@ -104,35 +118,44 @@ run_simulation <- function(params) {
     state <- step$state
     t <- step$t
 
-    if(step$stop)
+    # stop no event (zero or negative rates), or maximum time
+    if (step$stop) {
+      stop_reason <- step$reason
       break
+    }
 
-    # New Check stability
-    stability_monitor <- update_stability(
-      stability_monitor,
-      state,
-      time = t
-    )
+    # Check stability
 
-    # Start epidemic once social system is stable
-    if (!state$epidemic_started && isTRUE(params$runEpidemic)){
+    # Start epidemic by time
+    #if (params$epi_trigger == "time") {
+    #  print('start epi time')
+    #  stability_monitor$is_stable <- (t >= params$epi_time)
+    #}else{
+      stability_monitor <- update_stability(
+        stability_monitor,
+        state,
+        time = t
+      )
+    #}
 
-      state$epidemic_started <- stability_monitor$is_stable
+    if (
+      !state$epidemic_started &&
+      isTRUE(params$runEpidemic) &&
+      isTRUE(stability_monitor$is_stable)
+    ) {
 
-      if (state$epidemic_started) {
+      state$epidemic_started <- TRUE
+      print('initialize epidemics')
+      #update epidemic status
+      epi_state <- init_epidemic(
+        params,
+        state$opinions
+      )
 
-          epi_state <- init_epidemic(
-            params,
-            opinion_state$opinions
-          )
+      state[names(epi_state)] <- epi_state
 
-          state <- c(
-            state,
-            epi_state
-          )
 
         }
-    }
 
     #=======
 

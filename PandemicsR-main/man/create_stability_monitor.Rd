@@ -4,7 +4,10 @@
 \alias{create_stability_monitor}
 \title{Stability monitoring}
 \usage{
-create_stability_monitor(window = 100, threshold = 0.01, persistence = 5)
+create_stability_monitor(
+  window = stability_window,
+  threshold = stability_threshold
+)
 }
 \description{
 Stability monitoring

@@ -104,26 +104,26 @@ compute_rates <- function(state, params){
   infection_red_rate <- 0
   infection_blue_rate <- 0
 
-  if (isTRUE(params$runEpidemic)) {
+  if (isTRUE(params$runEpidemic && isTRUE(state$epidemic_started))) {
 
     # infection is dependent of the opinion/social network
     infection_red_rate <-
       (params$beta_red_red *
-      length(state$S_red_nodes) *
-      length(state$I_red) +
+      state$S_red *
+      state$I_red +
 
         params$beta_red_blue *
-        length(state$S_red_nodes) *
-        length(state$I_blue))/ params$n
+        state$S_red *
+        state$I_blue)/ params$n
 
     infection_blue_rate <-
       (params$beta_blue_red *
-      length(state$S_blue_nodes) *
-      length(state$I_blue) +
+      state$S_blue *
+      state$I_blue +
 
       params$beta_blue_blue *
-      length(state$S_blue_nodes) *
-      length(state$I_red))/ params$n
+      state$S_blue *
+      state$I_red)/ params$n
 
     infection_rate_tot <-
       infection_red_rate +

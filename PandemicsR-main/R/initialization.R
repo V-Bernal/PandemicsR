@@ -1,3 +1,18 @@
+#' Initialize Network
+#'
+#' @param params Simulation parameters.
+#' @param opinions
+#' @param B0
+#' @param params
+#' @param state,
+#' @param trackers
+#' @param params
+#' @param network_state
+#' @param stop_reason
+#' @param t
+#' @param comp_time
+#' @param event_counter
+#' @export
 #==========================
 # Initialize Network
 #==========================
@@ -152,19 +167,23 @@ init_epidemic <- function(params, opinions){
   S_red_nodes  <- S_nodes[opinions[S_nodes] < 0]
   S_blue_nodes <- S_nodes[opinions[S_nodes] > 0]
 
+  I_red_nodes <- I_nodes[opinions[I_nodes] < 0]
+  I_blue_nodes <- I_nodes[opinions[I_nodes] > 0]
 
-  # Positions for O(1) removal
-  pos_in_S <- integer(n)
-  pos_in_I <- integer(n)
-  pos_in_R <- integer(n)
-
-  for(k in seq_along(S_nodes)){
-    pos_in_S[S_nodes[k]] <- k
-  }
-
-  for(k in seq_along(I_nodes)){
-    pos_in_I[I_nodes[k]] <- k
-  }
+  R_red_nodes <- integer(0)
+  R_blue_nodes <- integer(0)
+  # # Positions for O(1) removal
+  # pos_in_S <- integer(n)
+  # pos_in_I <- integer(n)
+  # pos_in_R <- integer(n)
+  #
+  # for(k in seq_along(S_nodes)){
+  #   pos_in_S[S_nodes[k]] <- k
+  # }
+  #
+  # for(k in seq_along(I_nodes)){
+  #   pos_in_I[I_nodes[k]] <- k
+  # }
 
 
   # Opinion camp counters
@@ -201,13 +220,21 @@ init_epidemic <- function(params, opinions){
     S_red_nodes = S_red_nodes,
     S_blue_nodes = S_blue_nodes,
 
+    # pos_in_S = pos_in_S,
+    # pos_in_I = pos_in_I,
+    # pos_in_R = pos_in_R,
+    S_red_nodes = S_red_nodes,
+    S_blue_nodes = S_blue_nodes,
+
+    I_red_nodes = I_red_nodes,
+    I_blue_nodes = I_blue_nodes,
+
+    R_red_nodes = R_red_nodes,
+    R_blue_nodes = R_blue_nodes,
+
     S_count = S_count,
     I_count = I_count,
     R_count = R_count,
-
-    pos_in_S = pos_in_S,
-    pos_in_I = pos_in_I,
-    pos_in_R = pos_in_R,
 
     total_red = total_red,
     total_blue = total_blue,

@@ -33,7 +33,37 @@ ui <- fluidPage(
         fluidRow(column(6, numericInput("timesteps", "Max time", value = 100)),
           column(6,numericInput("lambda", "RIG weight (lambda) ",value = 1)) )
               ),
-
+      
+      # wellPanel(
+      #   radioButtons(
+      #     "parameter_mode",
+      #     "Simulation scenarios:",
+      #     choices = c(
+      #       "Manual" = "manual",
+      #       "Predefined scenario" = "scenario"
+      #     ),
+      #     selected = "manual"
+      #   ),
+      #   
+      #   conditionalPanel(
+      #     condition = "input.parameter_mode == 'scenario'",
+      #   radioButtons(
+      #   "scenario",
+      #   "Simulation scenario:",
+      #   choices = c(
+      #     "Custom" = "custom",
+      #     "1. Resilient / Low-risk" = "resilient",
+      #     "2. Polarized / Segregated" = "polarized",
+      #     "3. Radicalization-dominated" = "radicalization",
+      #     "4. Epidemic-dominated" = "epidemic"
+      #   ),
+      #   selected = "resilient"
+      # ),
+      # textOutput("scenario_description")
+      #   ),
+      # 
+      # 
+      # ),
       # Section 2: Schelling
       wellPanel(
         h4("Schelling model"),
@@ -52,11 +82,18 @@ ui <- fluidPage(
       wellPanel(
         h4("Voter's model"),
         checkboxInput("runVoter", "Voter model", value = FALSE),
-        
+        sliderInput(
+          "Numopinions",
+          "Number of Opinions",
+          min = 2,
+          step = 2,
+          max = 4,
+          value = 4
+        ),
         conditionalPanel(
           condition = "input.runVoter",
         sliderInput("gamma", "Opinions rate", min = 0, step = 0.1, max = 100, value = 5),
-        sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
+        #sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
 
         # Section 4: Extremes
         #h5("Extremes"),
@@ -87,33 +124,52 @@ ui <- fluidPage(
       
       # Section 5.1: Epidemics activation
       wellPanel(
-        h4("Epidemics activation"),
-      
-      selectInput(
-        "epi_trigger",
-        "Start epidemic after:",
-        choices = c(
-          # "Fixed time" = "time",
-          # "Fixed events" = "events",
-          # "Events per node" = "events_per_node",
-          # "Opinion stability" = "opinion_stability",
-          # "Segregation stability" = "segregation_stability",
-          "Opinion and Segregation stability" = "global_stability"
+        h4("Epidemic activation"),
+        
+        selectInput(
+          "epi_trigger",
+          "Start epidemic after:",
+          choices = c(
+            "Fixed time" = "time",
+            "Opinion and Segregation stability" = "global_stability"
+          ),
+          selected = "time"
         ),
-        selected = "global_stability"
-      ),
-      
-      conditionalPanel(
-        condition = "input.epi_trigger == 'global_stability'",
-        numericInput(
-          "epi_epsilon_seg",
-          "window size:",
-          value = 0,
-          min = 0, max = 0
+        
+        conditionalPanel(
+          condition = "input.epi_trigger == 'time'",
+          
+          numericInput(
+            "epi_time",
+            "Epidemic start time:",
+            value = 10,
+            min = 0,
+            step = 1
+          )
+        ),
+        
+        conditionalPanel(
+          condition = "input.epi_trigger == 'global_stability'",
+          
+          numericInput(
+            "stability_window",
+            "Stability window (time):",
+            value = 10,
+            min = 1,
+            step = 1
+          ),
+          
+          numericInput(
+            "stability_threshold",
+            "Stability threshold:",
+            value = 0.01,
+            min = 0,
+            max = 1,
+            step = 0.01
           )
         )
-
       )
+
     )
       ,
       # Section 6: Visualization
@@ -225,71 +281,95 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   simData <- eventReactive(input$runSim, {
-
-
-    # params <- list(
-    #   n = 15,
-    #   m = 3,
-    #   t_max = 1000,
-    #   lambda = 1,
-    #   gamma = 5,
-    #   beta_plus = 0.2,
-    #   beta_minus = 0.2,
-    #   T_threshold = 1000,
-    #   num_opinions = 2,
-    #   c_param = 0.4,
-    #   alpha = 0.5,
-    #   alpha_deradicalization = 0.5,
-    #   alpha0_rad = 0.1,
-    #   alpha0_derad = 0.1,
-    #   runVoter = FALSE,
-    #   runSchelling = TRUE,
-    #   runEpidemic = FALSE,
-    #   beta_red_red = 0.2,
-    #   beta_blue_red = 0.2,
-    #   beta_red_blue = 0.2,
-    #   beta_blue_blue = 0.2,
-    #   beta_red = 0.2,
-    #   beta_blue = 0.2,
-    #   gamma_epi = 0.5,
-    #   I0 = 0.5,
-    #   epi_time = 0
-    # )
-
-    params <- list(
+    
+    p <- list(
+      
+      # ==========================
+      # Network
+      # ==========================
+      
       n = input$n,
       m = input$m,
       t_max = input$timesteps,
       lambda = input$lambda,
-      gamma = input$gamma,
+      
+      # ==========================
+      # Model switches
+      # ==========================
+      
+      runVoter = isTRUE(input$runVoter),
+      runSchelling = isTRUE(input$runSchelling),
+      runEpidemic = isTRUE(input$runEpidemic),
+      
+      # ==========================
+      # Opinions
+      # ==========================
+      
+      num_opinions = input$Numopinions,
+      
+      # ==========================
+      # Schelling
+      # ==========================
+      
+      c_param = input$c_param,
       beta_plus = input$beta_plus,
       beta_minus = input$beta_minus,
-      c_param = input$c_param,
       T_threshold = input$T_threshold,
-      num_opinions = input$Numopinions,
+      
+      # ==========================
+      # Voter / radicalization
+      # ==========================
+      
+      gamma = input$gamma,
+      
       alpha = input$alpha,
-      alpha_deradicalization = input$alpha_deradicalization,
+      alpha_deradicalization =
+        input$alpha_deradicalization,
+      
       alpha0_rad = input$alpha0_rad,
       alpha0_derad = input$alpha0_derad,
-      runEpidemic = input$runEpidemic,
-      runVoter = input$runVoter,
-      runSchelling = input$runSchelling,
+      
+      # ==========================
+      # Epidemic
+      # ==========================
+      
       beta_red_red = input$beta_red_red,
-      beta_blue_red = input$beta_blue_red,
       beta_red_blue = input$beta_red_blue,
+      beta_blue_red = input$beta_blue_red,
       beta_blue_blue = input$beta_blue_blue,
+      
       gamma_epi = input$gamma_epi,
       I0 = input$I0,
-      epi_time =input$epi_time
+      
+      # ==========================
+      # Epidemic activation
+      # ==========================
+      
+      epi_trigger = input$epi_trigger,
+      
+      epi_time =
+        if (identical(input$epi_trigger, "time"))
+          input$epi_time
+      else
+        NULL,
+      
+      stability_window =
+        if (identical(input$epi_trigger, "global_stability"))
+          input$stability_window
+      else
+        NULL,
+      
+      stability_threshold =
+        if (identical(input$epi_trigger, "global_stability"))
+          input$stability_threshold
+      else
+        NULL
     )
     
-    # Simulation
-    run_simulation(params)
-
-    }
-
-    )
-
+    print("PARAMETERS:")
+    print(p)
+    run_simulation(p)
+  })
 
   #==========================
   # Section 6: Visualization
@@ -299,7 +379,7 @@ server <- function(input, output, session) {
   output$stopReason <- renderText({
     req(simData())
     paste("Simulation stopped:", simData()$stop_reason,
-          "| Final Gillespie time:", round(simData()$final_time, 2))
+          "| Final time:", round(simData()$final_time, 2))
   })
 
   output$compTime <- renderText({
@@ -316,7 +396,24 @@ server <- function(input, output, session) {
            " events")
   })
 
-
+  output$scenario_description <- renderText({
+    
+    switch(
+      input$scenario,
+      
+      resilient =
+        "Moderate social dynamics, lower transmission and faster recovery.",
+      
+      polarized =
+        "Strong within-camp dynamics and segregation; cross-camp transmission is lower.",
+      
+      radicalization =
+        "Radicalization dominates deradicalization and epidemic persistence is favored.",
+      
+      epidemic =
+        "Strong epidemic pressure with active social feedback."
+    )
+  })
   # Network 
   output$rig0Plot <- renderPlot({
     req(simData())           

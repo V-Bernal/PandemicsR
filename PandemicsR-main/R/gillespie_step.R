@@ -11,7 +11,9 @@ gillespie_step <- function(state, params, t){
   #==========================
   rates <- compute_rates(state, params)
 
-  if (rates$lambda_tot <= 0) {
+  #print(rates)
+
+  if (isTRUE(rates$lambda_tot <= 0)) {
     return(list(
       state = state,
       t = t,
@@ -40,6 +42,13 @@ gillespie_step <- function(state, params, t){
   #==========================
   u_event <- stats::runif(1)
 
+  stopifnot(
+    all(is.finite(rates$lambda_i)),
+    all(rates$lambda_i >= 0),
+    is.finite(rates$social_rate),
+    rates$social_rate >= 0
+  )
+
   if (u_event < rates$social_rate / rates$lambda_tot){
 
     event <- sample_social_event(
@@ -62,13 +71,29 @@ gillespie_step <- function(state, params, t){
   } else {
 
     # Check epidemic activation
-    if( state$epidemic_started ){
+    if( isTRUE(state$epidemic_started) && isTRUE(params$runEpidemic) ){
+
+      #if (!is.null(state$epi)) {
+
+      #   stopifnot(
+      #     length(state$epi) == length(state$opinions),
+      #     length(state$epi) == length(state$groups_of_individual)
+      #   )
+      # }
+
+      # cat("BEFORE epidemic event\n")
+      # stopifnot(!anyNA(state$opinions))
+
       state <- apply_epidemic_event(
         state,
         rates,
         params,
         t
       )
+
+      #cat("AFTER epidemic event\n")
+      #stopifnot(!anyNA(state$opinions))
+
     }
 
   }

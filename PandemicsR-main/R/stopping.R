@@ -1,6 +1,21 @@
+#' stopping
+#'
+#' @param params Simulation parameters.
+#' @param opinions
+#' @param B0
+#' @param params
+#' @param state,
+#' @param trackers
+#' @param params
+#' @param network_state
+#' @param stop_reason
+#' @param t
+#' @param comp_time
+#' @param event_counter
+#' @export
 check_stopping <- function(state, params) {
 
-  if (state$epidemic_started) {
+  if (isTRUE(state$epidemic_started) && isTRUE(params$runEpidemic)) {
 
     if (state$I_count == 0) {
       return(list(

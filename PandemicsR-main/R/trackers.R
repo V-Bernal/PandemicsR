@@ -1,9 +1,18 @@
+#' trackers
+#'
+#' @param params Simulation parameters.
+#' @param opinions
+#' @param t,
+#' @param params
+#' @export
 init_trackers <- function(params, opinions) {
 
   n <- params$n
   num_opinions <- params$num_opinions
 
   # Gillespie recording
+  # Regardless of simulation duration, store
+  # approximately 500 equally spaced observations over the entire simulation."
   record_every <- params$t_max / 500
   max_records  <- ceiling(params$t_max / record_every) + 1
 
@@ -58,7 +67,7 @@ init_trackers <- function(params, opinions) {
 
   )
 
-  if (isTRUE(params$runEpidemic)) {
+  if ( isTRUE(params$runEpidemic)) {
 
     trackers$S_hist <- rep(NA_real_, max_records)
     trackers$I_hist <- rep(NA_real_, max_records)
@@ -79,37 +88,155 @@ init_trackers <- function(params, opinions) {
     trackers$S_hist_out <- rep(NA_real_, max_records)
     trackers$I_hist_out <- rep(NA_real_, max_records)
     trackers$R_hist_out <- rep(NA_real_, max_records)
+
+    # #---------------------------------------
+    # # Record initial epidemic state
+    # #---------------------------------------
+    #
+    # trackers$S_hist[1] <- state$S_count
+    # trackers$I_hist[1] <- state$I_count
+    # trackers$R_hist[1] <- state$R_count
+    #
+    # trackers$S_hist_red[1] <- state$S_red
+    # trackers$I_hist_red[1] <- state$I_red
+    # trackers$R_hist_red[1] <- state$R_red
+    #
+    # trackers$S_hist_blue[1] <- state$S_blue
+    # trackers$I_hist_blue[1] <- state$I_blue
+    # trackers$R_hist_blue[1] <- state$R_blue
+    #
+    # # Membership
+    # isS <- state$epi == state$S
+    # isI <- state$epi == state$I
+    # isR <- state$epi == state$R
+    # grp_idx <- state$in_group
+    # out_idx <- !grp_idx
+    #
+    # trackers$S_hist_grp[1] <- sum(isS & grp_idx)
+    # trackers$I_hist_grp[1] <- sum(isI & grp_idx)
+    # trackers$R_hist_grp[1] <- sum(isR & grp_idx)
+    #
+    # trackers$S_hist_out[1] <- sum(isS & out_idx)
+    # trackers$I_hist_out[1] <- sum(isI & out_idx)
+    # trackers$R_hist_out[1] <- sum(isR & out_idx)
   }
 
   trackers
 }
 
-#-----------------------------
+# #-----------------------------
+# update_trackers <- function(trackers, state, t, params) {
+#
+#   trackers$opinion_history[,2] <- state$opinions
+#
+#   # Advance record index
+#   trackers$record_idx <- trackers$record_idx + 1
+#   idx <- trackers$record_idx
+#
+#   #=========================
+#   # Time
+#   #=========================
+#   trackers$time_hist[idx] <- t
+#
+#   #=========================
+#   # Opinion fractions
+#   #=========================
+#   trackers$frac_mat[, idx] <- sapply(
+#     trackers$levels,
+#     function(op) sum(state$opinions == op) / params$n
+#   )
+#
+#   #=========================
+#   # Epidemic tracking
+#   #=========================
+#   if (isTRUE(state$epidemic_started) && isTRUE(params$runEpidemic)) {
+#
+#     isS <- state$epi == state$S
+#     isI <- state$epi == state$I
+#     isR <- state$epi == state$R
+#
+#     grp_idx <- state$in_group
+#     out_idx <- !grp_idx
+#
+#     # Overall
+#     trackers$S_hist[idx] <- state$S_count
+#     trackers$I_hist[idx] <- state$I_count
+#     trackers$R_hist[idx] <- state$R_count
+#
+#     # Opinion camps
+#     trackers$S_hist_red[idx]  <- state$S_red
+#     trackers$I_hist_red[idx]  <- state$I_red
+#     trackers$R_hist_red[idx]  <- state$R_red
+#
+#     trackers$S_hist_blue[idx] <- state$S_blue
+#     trackers$I_hist_blue[idx] <- state$I_blue
+#     trackers$R_hist_blue[idx] <- state$R_blue
+#
+#     # Membership
+#     trackers$S_hist_grp[idx] <- sum(isS & grp_idx)
+#     trackers$I_hist_grp[idx] <- sum(isI & grp_idx)
+#     trackers$R_hist_grp[idx] <- sum(isR & grp_idx)
+#
+#     trackers$S_hist_out[idx] <- sum(isS & out_idx)
+#     trackers$I_hist_out[idx] <- sum(isI & out_idx)
+#     trackers$R_hist_out[idx] <- sum(isR & out_idx)
+#   }
+#
+#   trackers
+# }
 update_trackers <- function(trackers, state, t, params) {
 
-  trackers$opinion_history[,2] <- state$opinions
+  #=======================================================
+  # 1. Opinion history
+  #    Keep existing implementation:
+  #    column 1 = initial opinions
+  #    column 2 = latest opinions
+  #=======================================================
 
-  # Advance record index
-  trackers$record_idx <- trackers$record_idx + 1
-  idx <- trackers$record_idx
+  trackers$opinion_history[, 2] <- state$opinions
 
-  #=========================
-  # Time
-  #=========================
+
+  #=======================================================
+  # 2. Advance record index safely
+  #=======================================================
+
+  if (trackers$record_idx >= trackers$max_records) {
+    return(trackers)
+  }
+
+  idx <- trackers$record_idx + 1
+
+  trackers$record_idx <- idx
+
+
+  #=======================================================
+  # 3. Time
+  #=======================================================
+
   trackers$time_hist[idx] <- t
 
-  #=========================
-  # Opinion fractions
-  #=========================
+
+  #=======================================================
+  # 4. Opinion fractions
+  #=======================================================
+
   trackers$frac_mat[, idx] <- sapply(
     trackers$levels,
-    function(op) sum(state$opinions == op) / params$n
+    function(op) {
+      sum(state$opinions == op) / params$n
+    }
   )
 
-  #=========================
-  # Epidemic tracking
-  #=========================
-  if (isTRUE(params$runEpidemic)) {
+
+  #=======================================================
+  # 5. Epidemic tracking
+  #=======================================================
+
+  if (
+    isTRUE(state$epidemic_started) &&
+    isTRUE(params$runEpidemic) &&
+    !is.null(state$epi)
+  ) {
 
     isS <- state$epi == state$S
     isI <- state$epi == state$I
@@ -118,21 +245,33 @@ update_trackers <- function(trackers, state, t, params) {
     grp_idx <- state$in_group
     out_idx <- !grp_idx
 
+
+    #-------------------------
     # Overall
+    #-------------------------
+
     trackers$S_hist[idx] <- state$S_count
     trackers$I_hist[idx] <- state$I_count
     trackers$R_hist[idx] <- state$R_count
 
+
+    #-------------------------
     # Opinion camps
-    trackers$S_hist_red[idx]  <- state$S_red
-    trackers$I_hist_red[idx]  <- state$I_red
-    trackers$R_hist_red[idx]  <- state$R_red
+    #-------------------------
+
+    trackers$S_hist_red[idx] <- state$S_red
+    trackers$I_hist_red[idx] <- state$I_red
+    trackers$R_hist_red[idx] <- state$R_red
 
     trackers$S_hist_blue[idx] <- state$S_blue
     trackers$I_hist_blue[idx] <- state$I_blue
     trackers$R_hist_blue[idx] <- state$R_blue
 
+
+    #-------------------------
     # Membership
+    #-------------------------
+
     trackers$S_hist_grp[idx] <- sum(isS & grp_idx)
     trackers$I_hist_grp[idx] <- sum(isI & grp_idx)
     trackers$R_hist_grp[idx] <- sum(isR & grp_idx)
@@ -142,7 +281,8 @@ update_trackers <- function(trackers, state, t, params) {
     trackers$R_hist_out[idx] <- sum(isR & out_idx)
   }
 
-  trackers
+
+  return(trackers)
 }
 
 ######################
@@ -229,3 +369,4 @@ finalize_trackers <- function(trackers, params) {
 
   results
 }
+

@@ -1,17 +1,20 @@
+#' sample_social_event
+#'
+#' @param params Simulation parameters.
+#' @param state
+#' @param rates
+#' @export
 sample_social_event <- function(state, rates, params) {
 
   if (rates$social_rate <= 0)
     return(NULL)
 
   group_i <-
-    if (params$m > 1)
+    if (params$m > 1){
       sample.int(
         params$m,
         1,
-        prob = rates$lambda_i / rates$social_rate
-      )
-  else
-    1
+        prob = rates$lambda_i / rates$social_rate)} else{1}
 
   Ri_g <- state$Ri[group_i]
   Bi_g <- state$Bi[group_i]
@@ -51,10 +54,21 @@ sample_social_event <- function(state, rates, params) {
     move  = move
   )
 }
+
 #---------------------------------------------------------
 # apply_social_mov
 #---------------------------------------------------------
 apply_social_move <- function(state, move, group_i, params) {
+
+  stopifnot(
+    length(group_i) == 1,
+    !is.na(group_i),
+    group_i >= 1,
+    group_i <= length(state$Ri),
+    group_i <= length(state$Bi),
+    group_i <= length(state$red_members),
+    group_i <= length(state$blue_members)
+  )
 
   if (move == 1) {
 
@@ -122,6 +136,7 @@ join_group <- function(state, group_i, params){
   # Join external to group
   chosen_idx <- sample.int(length(outsiders[[group_i]]),1)
   chosen <- outsiders[[group_i]][chosen_idx]
+
   outsiders[[group_i]][chosen_idx] <- outsiders[[group_i]][length(outsiders[[group_i]])]
   outsiders[[group_i]] <- outsiders[[group_i]][-length(outsiders[[group_i]])]
 
@@ -291,18 +306,17 @@ leave_blue <- function(state, group_i){
 #---------------------------------------------------------
 leave_extreme_red <- function(state, group_i){
 
+  if(state$Ei_red[group_i] == 0)
+    return(state)
+
   members_g <- state$members[[group_i]]
 
   extreme_red <-
     members_g[state$opinions[members_g] == -2]
 
-
-  if(length(extreme_red) == 0)
-    return(state)
-
-
-  chosen <- sample(extreme_red, 1)
-
+  chosen_idx <- sample.int(length(extreme_red), 1)
+  chosen <- extreme_red[chosen_idx]
+  #chosen <- sample(extreme_red, 1)
 
   # Remove from members
   idx_m <- which(state$members[[group_i]] == chosen)
@@ -351,7 +365,7 @@ leave_extreme_red <- function(state, group_i){
 #---------------------------------------------------------
 leave_extreme_blue <- function(state, group_i){
 
-  if(length(state$Ei_blue[group_i]) == 0)
+  if(state$Ei_blue[group_i] == 0)
     return(state)
 
   members_g <- state$members[[group_i]]
@@ -359,7 +373,9 @@ leave_extreme_blue <- function(state, group_i){
   extreme_blue <-
     members_g[state$opinions[members_g] == 2]
 
-  chosen <- sample(extreme_blue, 1)
+  chosen_idx <- sample.int(length(extreme_blue), 1)
+  chosen <- extreme_blue[chosen_idx]
+  #chosen <- sample(extreme_blue, 1)
 
 
   # Remove from members
@@ -407,26 +423,36 @@ leave_extreme_blue <- function(state, group_i){
 # Voter and radicalization events
 #=========================================================
 
-
 #---------------------------------------------------------
 # Move 1: Moderate Red -> Moderate Blue
 #---------------------------------------------------------
-red_to_blue <- function(state, group_i){
+red_to_blue <- function(state, group_i) {
 
-  if(state$Ri[group_i] == 0 || state$Bi[group_i] == 0)
+  if (state$Ri[group_i] == 0 || state$Bi[group_i] == 0)
     return(state)
 
-  chosen <- sample(state$red_members[[group_i]], 1)
+  chosen_idx <- sample.int(length(state$red_members[[group_i]]), 1)
+  chosen <- state$red_members[[group_i]][chosen_idx]
+  #chosen <- sample(state$red_members[[group_i]], 1)
 
+  stopifnot(
+    length(chosen) == 1,
+    !is.na(chosen),
+    chosen >= 1,
+    chosen <= length(state$opinions)
+  )
+
+  # Change opinion
   state$opinions[chosen] <- 1
 
-
+  #-------------------------------------------------------
   # Update all groups of individual
-  for(g in state$groups_of_individual[[chosen]]){
+  #-------------------------------------------------------
+  for (g in state$groups_of_individual[[chosen]]) {
 
     idx <- which(state$red_members[[g]] == chosen)
 
-    if(length(idx) > 0){
+    if (length(idx) > 0) {
 
       state$red_members[[g]][idx] <-
         state$red_members[[g]][length(state$red_members[[g]])]
@@ -442,44 +468,88 @@ red_to_blue <- function(state, group_i){
     }
   }
 
-  if ( state$epidemic_started && state$epi[chosen] == state$S) {
+  #-------------------------------------------------------
+  # Update epidemic camp
+  #-------------------------------------------------------
+  if (isTRUE(state$epidemic_started)) {
 
-    # Remove from susceptible red
-    state$S_red_nodes <-
-      state$S_red_nodes[state$S_red_nodes != chosen]
+    stopifnot(
+      !is.null(state$epi),
+      length(state$epi) == length(state$opinions),
+      chosen >= 1,
+      chosen <= length(state$epi)
+    )
 
-    # Add to susceptible blue
-    state$S_blue_nodes <-
-      c(state$S_blue_nodes, chosen)
+    if (state$epi[chosen] == state$S) {
+
+      state$S_red_nodes <-
+        state$S_red_nodes[state$S_red_nodes != chosen]
+
+      state$S_blue_nodes <-
+        c(state$S_blue_nodes, chosen)
+
+      state$S_red <- state$S_red - 1
+      state$S_blue <- state$S_blue + 1
+
+    } else if (state$epi[chosen] == state$I) {
+
+      state$I_red_nodes <-
+        state$I_red_nodes[state$I_red_nodes != chosen]
+
+      state$I_blue_nodes <-
+        c(state$I_blue_nodes, chosen)
+
+      state$I_red <- state$I_red - 1
+      state$I_blue <- state$I_blue + 1
+
+    } else if (state$epi[chosen] == state$R) {
+
+      state$R_red_nodes <-
+        state$R_red_nodes[state$R_red_nodes != chosen]
+
+      state$R_blue_nodes <-
+        c(state$R_blue_nodes, chosen)
+
+      state$R_red <- state$R_red - 1
+      state$R_blue <- state$R_blue + 1
+    }
+
+    state$total_red <- state$total_red - 1
+    state$total_blue <- state$total_blue + 1
   }
 
-  # tracker warm up
+  #-------------------------------------------------------
+  # Tracker
+  #-------------------------------------------------------
   state$opinion_changes <-
     state$opinion_changes + 1
 
   return(state)
 }
 
-
-
 #---------------------------------------------------------
 # Move 2: Moderate Blue -> Moderate Red
 #---------------------------------------------------------
-blue_to_red <- function(state, group_i){
+blue_to_red <- function(state, group_i) {
 
-  if(state$Ri[group_i] == 0 || state$Bi[group_i] == 0)
+  if (state$Ri[group_i] == 0 || state$Bi[group_i] == 0)
     return(state)
 
-  chosen <- sample(state$blue_members[[group_i]], 1)
+  chosen_idx <- sample.int(length(state$blue_members[[group_i]]), 1)
+  chosen <- state$blue_members[[group_i]][chosen_idx]
+  #chosen <- sample(state$blue_members[[group_i]], 1)
 
+  # Change opinion
   state$opinions[chosen] <- -1
 
-
-  for(g in state$groups_of_individual[[chosen]]){
+  #-------------------------------------------------------
+  # Update all groups of individual
+  #-------------------------------------------------------
+  for (g in state$groups_of_individual[[chosen]]) {
 
     idx <- which(state$blue_members[[g]] == chosen)
 
-    if(length(idx) > 0){
+    if (length(idx) > 0) {
 
       state$blue_members[[g]][idx] <-
         state$blue_members[[g]][length(state$blue_members[[g]])]
@@ -495,33 +565,70 @@ blue_to_red <- function(state, group_i){
     }
   }
 
-  if (state$epidemic_started && state$epi[chosen] == state$S) {
+  #-------------------------------------------------------
+  # Update epidemic camp
+  #-------------------------------------------------------
+  if (isTRUE(state$epidemic_started)) {
 
-      # Remove from susceptible blue
-      state$S_blue_nodes <-
-        state$S_blue_nodes[state$S_blue_nodes != chosen]
+    stopifnot(
+      !is.null(state$epi),
+      length(state$epi) == length(state$opinions),
+      chosen >= 1,
+      chosen <= length(state$epi)
+    )
 
-      # Add to susceptible red
+    if (state$epi[chosen] == state$S) {
+
       state$S_red_nodes <-
-        c(state$S_red_nodes, chosen)
+        state$S_red_nodes[state$S_red_nodes != chosen]
+
+      state$S_blue_nodes <-
+        c(state$S_blue_nodes, chosen)
+
+      state$S_red <- state$S_red - 1
+      state$S_blue <- state$S_blue + 1
+
+    } else if (state$epi[chosen] == state$I) {
+
+      state$I_red_nodes <-
+        state$I_red_nodes[state$I_red_nodes != chosen]
+
+      state$I_blue_nodes <-
+        c(state$I_blue_nodes, chosen)
+
+      state$I_red <- state$I_red - 1
+      state$I_blue <- state$I_blue + 1
+
+    } else if (state$epi[chosen] == state$R) {
+
+      state$R_red_nodes <-
+        state$R_red_nodes[state$R_red_nodes != chosen]
+
+      state$R_blue_nodes <-
+        c(state$R_blue_nodes, chosen)
+
+      state$R_red <- state$R_red - 1
+      state$R_blue <- state$R_blue + 1
     }
 
-  # tracker warm up
+    state$total_red <- state$total_red - 1
+    state$total_blue <- state$total_blue + 1
+  }
+  #-------------------------------------------------------
+  # Tracker
+  #-------------------------------------------------------
   state$opinion_changes <-
     state$opinion_changes + 1
 
   return(state)
 }
 
-
-
 #---------------------------------------------------------
 # Move 6: Moderate Red -> Extreme Red
 #---------------------------------------------------------
 radicalize_red <- function(state, group_i){
 
-  if(state$Ri[group_i] == 0 ||
-     state$Ei_red[group_i] == 0)
+  if(state$Ri[group_i] == 0)
     return(state)
 
   candidates <-
@@ -532,8 +639,9 @@ radicalize_red <- function(state, group_i){
   if(length(candidates)==0)
     return(state)
 
-
-  chosen <- sample(candidates,1)
+  chosen_idx <- sample.int(length(candidates), 1)
+  chosen <- candidates[chosen_idx]
+  # chosen <- sample(candidates,1)
 
   state$opinions[chosen] <- -2
 
@@ -569,8 +677,7 @@ radicalize_red <- function(state, group_i){
 #---------------------------------------------------------
 radicalize_blue <- function(state, group_i){
 
-  if(state$Bi[group_i] == 0 ||
-     state$Ei_blue[group_i] == 0)
+  if(state$Bi[group_i] == 0 )
     return(state)
 
   candidates <-
@@ -581,8 +688,9 @@ radicalize_blue <- function(state, group_i){
   if(length(candidates)==0)
     return(state)
 
-
-  chosen <- sample(candidates,1)
+  chosen_idx <- sample.int(length(candidates), 1)
+  chosen <- candidates[chosen_idx]
+  #chosen <- sample(candidates,1)
 
   state$opinions[chosen] <- 2
 
@@ -618,7 +726,7 @@ radicalize_blue <- function(state, group_i){
 #---------------------------------------------------------
 deradicalize_red <- function(state, group_i){
 
-  if(state$Ei_red[group_i] == 0 || state$Ri[group_i] > 0)
+  if(state$Ei_red[group_i] == 0 || state$Ri[group_i] == 0)
     return(state)
 
 
@@ -630,8 +738,9 @@ deradicalize_red <- function(state, group_i){
   if(length(candidates)==0)
     return(state)
 
-
-  chosen <- sample(candidates,1)
+  chosen_idx <- sample.int(length(candidates), 1)
+  chosen <- candidates[chosen_idx]
+  #chosen <- sample(candidates,1)
 
   state$opinions[chosen] <- -1
 
@@ -670,8 +779,9 @@ deradicalize_blue <- function(state, group_i){
   if(length(candidates)==0)
     return(state)
 
-
-  chosen <- sample(candidates,1)
+  chosen_idx <- sample.int(length(candidates), 1)
+  chosen <- candidates[chosen_idx]
+  #chosen <- sample(candidates,1)
 
   state$opinions[chosen] <- 1
 
@@ -691,3 +801,4 @@ deradicalize_blue <- function(state, group_i){
 
   return(state)
 }
+
