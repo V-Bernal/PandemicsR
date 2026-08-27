@@ -28,9 +28,57 @@ Output:
 install.packages("devtools")
 library(devtools)
 install_github("V-Bernal/PandemicsR", subdir="PandemicsR-main")
-
+# Run the script or Shiny for testing. 
+library(PandemicsR)
+shiny::runApp()
 ```
-Run the script or Shiny for testing. 
+---
+## Project Structure
+PandemicsR-main/
+├── R/
+│   ├── network/
+│   ├── opinions/
+│   ├── groups/
+│   ├── epidemic/
+│   ├── stability.R
+│   ├── gillespie.R
+│   ├── run_simulation.R
+│   └── ...
+│
+├── vignettes/
+│   ├── introduction.Rmd
+│   ├── model_description.Rmd
+│   └── Parameters.Rmd
+│
+├── app.R
+├── DESCRIPTION
+├── NAMESPACE
+└── README.md
+
+                 ┌─────────────────┐
+                 │     Network     │
+                 └────────┬────────┘
+                          │
+                          ▼
+                 ┌─────────────────┐
+                 │     Opinions    │
+                 │   Voter model   │
+                 └────────┬────────┘
+                          │
+                          ▼
+                 ┌─────────────────┐
+                 │      Groups     │
+                 │ Schelling model │
+                 └────────┬────────┘
+                          │
+                          ▼
+                 ┌─────────────────┐
+                 │     Epidemic    │
+                 │    SIR model    │
+                 └─────────────────┘
+
+       Social state ───────────────► Epidemic transmission
+       Epidemic state ─────────────► Social dynamics
 
 ---
 ## Requirements
@@ -39,3 +87,4 @@ Run the script or Shiny for testing.
 - `Matrix`
 - `shiny`
 - `zip`
+---
