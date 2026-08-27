@@ -54,7 +54,8 @@ PandemicsR-main/
 ├── DESCRIPTION
 ├── NAMESPACE
 └── README.md
-
+---
+## Model interaction
                  ┌─────────────────┐
                  │     Network     │
                  └────────┬────────┘
