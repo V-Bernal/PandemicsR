@@ -59,34 +59,6 @@ PandemicsR-main/
 ├── NAMESPACE
 └── README.md
 ```
-## Model interaction
-```text
-                 ┌─────────────────┐
-                 │     Network     │
-                 └────────┬────────┘
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │     Opinions    │
-                 │   Voter model   │
-                 └────────┬────────┘
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │      Groups     │
-                 │ Schelling model │
-                 └────────┬────────┘
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │     Epidemic    │
-                 │    SIR model    │
-                 └─────────────────┘
-
-       Social state ───────────────► Epidemic transmission
-       Epidemic state ─────────────► Social dynamics
-
-```
 ## Requirements
 - `R >= 4.3.0`
 - `igraph`
