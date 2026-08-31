@@ -125,20 +125,25 @@ apply_social_move <- function(state, move, group_i, params) {
 #---------------------------------------------------------
 join_group <- function(state, group_i, params){
 
-  if(length(state$outsiders[[group_i]] ) == 0){
+  n_members <- length(state$members[[group_i]])
+  if (n_members >= params$n) {
     return(state)
   }
 
-  outsiders <- state$outsiders
   members <- state$members
   opinions <- state$opinions
 
-  # Join external to group
-  chosen_idx <- sample.int(length(outsiders[[group_i]]),1)
-  chosen <- outsiders[[group_i]][chosen_idx]
-
-  outsiders[[group_i]][chosen_idx] <- outsiders[[group_i]][length(outsiders[[group_i]])]
-  outsiders[[group_i]] <- outsiders[[group_i]][-length(outsiders[[group_i]])]
+  # Sample non-member node (rejection sampling or setdiff)
+  if (n_members > params$n * 0.5) {
+    outsiders <- setdiff(seq_len(params$n), members[[group_i]])
+    if (length(outsiders) == 0) return(state)
+    chosen <- outsiders[sample.int(length(outsiders), 1)]
+  } else {
+    repeat {
+      chosen <- sample.int(params$n, 1)
+      if (!(chosen %in% members[[group_i]])) break
+    }
+  }
 
   members[[group_i]] <- c(members[[group_i]], chosen)
   state$groups_of_individual[[chosen]] <- c(state$groups_of_individual[[chosen]], group_i)
@@ -161,7 +166,6 @@ join_group <- function(state, group_i, params){
     state$Bi[group_i] <- state$Bi[group_i] + 1
   }
 
-  state$outsiders <- outsiders
   state$members <- members
   state$rig_dirty <- TRUE
 
@@ -197,13 +201,12 @@ leave_red<- function(state, group_i, params){
 
 
   # Remove from members
-  idx_m <- which(state$members[[group_i]] == chosen)
-
-  state$members[[group_i]][idx_m] <-
-    state$members[[group_i]][length(state$members[[group_i]])]
-
-  state$members[[group_i]] <-
-    state$members[[group_i]][-length(state$members[[group_i]])]
+  idx_m <- match(chosen, state$members[[group_i]])
+  if (!is.na(idx_m)) {
+    len_m <- length(state$members[[group_i]])
+    state$members[[group_i]][idx_m] <- state$members[[group_i]][len_m]
+    state$members[[group_i]] <- state$members[[group_i]][-len_m]
+  }
 
 
   # Update individual membership
@@ -212,11 +215,6 @@ leave_red<- function(state, group_i, params){
       state$groups_of_individual[[chosen]],
       group_i
     )
-
-
-  # Add to outsiders
-  state$outsiders[[group_i]] <-
-    c(state$outsiders[[group_i]], chosen)
 
 
   # Update counters
@@ -260,13 +258,12 @@ leave_blue <- function(state, group_i){
 
 
   # Remove from members
-  idx_m <- which(state$members[[group_i]] == chosen)
-
-  state$members[[group_i]][idx_m] <-
-    state$members[[group_i]][length(state$members[[group_i]])]
-
-  state$members[[group_i]] <-
-    state$members[[group_i]][-length(state$members[[group_i]])]
+  idx_m <- match(chosen, state$members[[group_i]])
+  if (!is.na(idx_m)) {
+    len_m <- length(state$members[[group_i]])
+    state$members[[group_i]][idx_m] <- state$members[[group_i]][len_m]
+    state$members[[group_i]] <- state$members[[group_i]][-len_m]
+  }
 
 
   # Update individual membership
@@ -275,11 +272,6 @@ leave_blue <- function(state, group_i){
       state$groups_of_individual[[chosen]],
       group_i
     )
-
-
-  # Add to outsiders
-  state$outsiders[[group_i]] <-
-    c(state$outsiders[[group_i]], chosen)
 
 
   # Update counters
@@ -316,16 +308,14 @@ leave_extreme_red <- function(state, group_i){
 
   chosen_idx <- sample.int(length(extreme_red), 1)
   chosen <- extreme_red[chosen_idx]
-  #chosen <- sample(extreme_red, 1)
 
   # Remove from members
-  idx_m <- which(state$members[[group_i]] == chosen)
-
-  state$members[[group_i]][idx_m] <-
-    state$members[[group_i]][length(state$members[[group_i]])]
-
-  state$members[[group_i]] <-
-    state$members[[group_i]][-length(state$members[[group_i]])]
+  idx_m <- match(chosen, state$members[[group_i]])
+  if (!is.na(idx_m)) {
+    len_m <- length(state$members[[group_i]])
+    state$members[[group_i]][idx_m] <- state$members[[group_i]][len_m]
+    state$members[[group_i]] <- state$members[[group_i]][-len_m]
+  }
 
 
   # Update individual membership
@@ -334,11 +324,6 @@ leave_extreme_red <- function(state, group_i){
       state$groups_of_individual[[chosen]],
       group_i
     )
-
-
-  # Add to outsiders
-  state$outsiders[[group_i]] <-
-    c(state$outsiders[[group_i]], chosen)
 
 
   # Update extreme counter
@@ -375,17 +360,15 @@ leave_extreme_blue <- function(state, group_i){
 
   chosen_idx <- sample.int(length(extreme_blue), 1)
   chosen <- extreme_blue[chosen_idx]
-  #chosen <- sample(extreme_blue, 1)
 
 
   # Remove from members
-  idx_m <- which(state$members[[group_i]] == chosen)
-
-  state$members[[group_i]][idx_m] <-
-    state$members[[group_i]][length(state$members[[group_i]])]
-
-  state$members[[group_i]] <-
-    state$members[[group_i]][-length(state$members[[group_i]])]
+  idx_m <- match(chosen, state$members[[group_i]])
+  if (!is.na(idx_m)) {
+    len_m <- length(state$members[[group_i]])
+    state$members[[group_i]][idx_m] <- state$members[[group_i]][len_m]
+    state$members[[group_i]] <- state$members[[group_i]][-len_m]
+  }
 
 
   # Update individual membership
@@ -394,11 +377,6 @@ leave_extreme_blue <- function(state, group_i){
       state$groups_of_individual[[chosen]],
       group_i
     )
-
-
-  # Add to outsiders
-  state$outsiders[[group_i]] <-
-    c(state$outsiders[[group_i]], chosen)
 
 
   # Update extreme counter
@@ -482,8 +460,12 @@ red_to_blue <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
-      state$S_red_nodes <-
-        state$S_red_nodes[state$S_red_nodes != chosen]
+      idx_sred <- match(chosen, state$S_red_nodes)
+      if (!is.na(idx_sred)) {
+        len_sred <- length(state$S_red_nodes)
+        state$S_red_nodes[idx_sred] <- state$S_red_nodes[len_sred]
+        state$S_red_nodes <- state$S_red_nodes[-len_sred]
+      }
 
       state$S_blue_nodes <-
         c(state$S_blue_nodes, chosen)
@@ -493,8 +475,12 @@ red_to_blue <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$I) {
 
-      state$I_red_nodes <-
-        state$I_red_nodes[state$I_red_nodes != chosen]
+      idx_ired <- match(chosen, state$I_red_nodes)
+      if (!is.na(idx_ired)) {
+        len_ired <- length(state$I_red_nodes)
+        state$I_red_nodes[idx_ired] <- state$I_red_nodes[len_ired]
+        state$I_red_nodes <- state$I_red_nodes[-len_ired]
+      }
 
       state$I_blue_nodes <-
         c(state$I_blue_nodes, chosen)
@@ -504,8 +490,12 @@ red_to_blue <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$R) {
 
-      state$R_red_nodes <-
-        state$R_red_nodes[state$R_red_nodes != chosen]
+      idx_rred <- match(chosen, state$R_red_nodes)
+      if (!is.na(idx_rred)) {
+        len_rred <- length(state$R_red_nodes)
+        state$R_red_nodes[idx_rred] <- state$R_red_nodes[len_rred]
+        state$R_red_nodes <- state$R_red_nodes[-len_rred]
+      }
 
       state$R_blue_nodes <-
         c(state$R_blue_nodes, chosen)
@@ -579,36 +569,48 @@ blue_to_red <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
+      idx_sblue <- match(chosen, state$S_blue_nodes)
+      if (!is.na(idx_sblue)) {
+        len_sblue <- length(state$S_blue_nodes)
+        state$S_blue_nodes[idx_sblue] <- state$S_blue_nodes[len_sblue]
+        state$S_blue_nodes <- state$S_blue_nodes[-len_sblue]
+      }
+
       state$S_red_nodes <-
-        state$S_red_nodes[state$S_red_nodes != chosen]
+        c(state$S_red_nodes, chosen)
 
-      state$S_blue_nodes <-
-        c(state$S_blue_nodes, chosen)
-
-      state$S_red <- state$S_red - 1
-      state$S_blue <- state$S_blue + 1
+      state$S_red <- state$S_red + 1
+      state$S_blue <- state$S_blue - 1
 
     } else if (state$epi[chosen] == state$I) {
 
+      idx_iblue <- match(chosen, state$I_blue_nodes)
+      if (!is.na(idx_iblue)) {
+        len_iblue <- length(state$I_blue_nodes)
+        state$I_blue_nodes[idx_iblue] <- state$I_blue_nodes[len_iblue]
+        state$I_blue_nodes <- state$I_blue_nodes[-len_iblue]
+      }
+
       state$I_red_nodes <-
-        state$I_red_nodes[state$I_red_nodes != chosen]
+        c(state$I_red_nodes, chosen)
 
-      state$I_blue_nodes <-
-        c(state$I_blue_nodes, chosen)
-
-      state$I_red <- state$I_red - 1
-      state$I_blue <- state$I_blue + 1
+      state$I_red <- state$I_red + 1
+      state$I_blue <- state$I_blue - 1
 
     } else if (state$epi[chosen] == state$R) {
 
+      idx_rblue <- match(chosen, state$R_blue_nodes)
+      if (!is.na(idx_rblue)) {
+        len_rblue <- length(state$R_blue_nodes)
+        state$R_blue_nodes[idx_rblue] <- state$R_blue_nodes[len_rblue]
+        state$R_blue_nodes <- state$R_blue_nodes[-len_rblue]
+      }
+
       state$R_red_nodes <-
-        state$R_red_nodes[state$R_red_nodes != chosen]
+        c(state$R_red_nodes, chosen)
 
-      state$R_blue_nodes <-
-        c(state$R_blue_nodes, chosen)
-
-      state$R_red <- state$R_red - 1
-      state$R_blue <- state$R_blue + 1
+      state$R_red <- state$R_red + 1
+      state$R_blue <- state$R_blue - 1
     }
 
     state$total_red <- state$total_red - 1

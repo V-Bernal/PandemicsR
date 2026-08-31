@@ -42,8 +42,9 @@ compute_rates <- function(state, params){
 
   if (isTRUE(params$runSchelling)) {
 
-    # joining a group
-    join_term <- params$c_param * sapply(state$outsiders, length) * sapply(state$members, length)
+    # joining a group: outsider count per group g is (params$n - length(members[[g]]))
+    n_outsiders <- params$n - sapply(state$members, length)
+    join_term <- params$c_param * n_outsiders * sapply(state$members, length)
     join_term <- join_term/params$n
 
     # leaving a group rates
