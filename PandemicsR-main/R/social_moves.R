@@ -133,7 +133,9 @@ join_group <- function(state, group_i, params){
   members <- state$members
   opinions <- state$opinions
 
-  # Sample non-member node (rejection sampling or setdiff)
+  # Dynamic non-member sampling without storing explicit O(N*M) outsiders lists.
+  # For sparse groups (<=50% full), rejection sampling runs in fast O(1) expected time without memory allocations.
+  # For dense groups (>50% full), compute non-members dynamically with setdiff to guarantee termination.
   if (n_members > params$n * 0.5) {
     outsiders <- setdiff(seq_len(params$n), members[[group_i]])
     if (length(outsiders) == 0) return(state)
@@ -200,7 +202,7 @@ leave_red<- function(state, group_i, params){
     state$red_members[[group_i]][-length(state$red_members[[group_i]])]
 
 
-  # Remove from members
+  # Remove from members (swap-and-pop O(1) element swap instead of vector filtering)
   idx_m <- match(chosen, state$members[[group_i]])
   if (!is.na(idx_m)) {
     len_m <- length(state$members[[group_i]])

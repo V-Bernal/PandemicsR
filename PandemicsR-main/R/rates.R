@@ -42,7 +42,8 @@ compute_rates <- function(state, params){
 
   if (isTRUE(params$runSchelling)) {
 
-    # joining a group: outsider count per group g is (params$n - length(members[[g]]))
+    # joining a group rate: implicit outsider count per group g is (params$n - length(members[[g]])).
+    # Eliminates O(N*M) list allocations and enables O(1) memory scalability for large N.
     n_outsiders <- params$n - sapply(state$members, length)
     join_term <- params$c_param * n_outsiders * sapply(state$members, length)
     join_term <- join_term/params$n

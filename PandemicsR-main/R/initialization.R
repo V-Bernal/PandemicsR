@@ -70,6 +70,8 @@ init_groups <- function(B0, opinions, params){
   members <- vector("list", m)
   red_members <- vector("list", m)
   blue_members <- vector("list", m)
+  # Note: explicit O(N*M) outsiders lists are omitted for memory scalability.
+  # Outsider counts are computed implicitly as (N - length(members[[g]])).
 
   groups_of_individual <- vector("list", n)
 
