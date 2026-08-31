@@ -70,7 +70,8 @@ init_groups <- function(B0, opinions, params){
   members <- vector("list", m)
   red_members <- vector("list", m)
   blue_members <- vector("list", m)
-  outsiders <- vector("list", m)
+  # Note: explicit O(N*M) outsiders lists are omitted for memory scalability.
+  # Outsider counts are computed implicitly as (N - length(members[[g]])).
 
   groups_of_individual <- vector("list", n)
 
@@ -84,8 +85,6 @@ init_groups <- function(B0, opinions, params){
     red_members[[g]] <- ids[opinions[ids] == -1]
 
     blue_members[[g]] <- ids[opinions[ids] == 1]
-
-    outsiders[[g]] <- setdiff(seq_len(n), ids)
 
     for (i in ids) {
       groups_of_individual[[i]] <-
@@ -119,7 +118,6 @@ init_groups <- function(B0, opinions, params){
     members = members,
     red_members = red_members,
     blue_members = blue_members,
-    outsiders = outsiders,
     groups_of_individual = groups_of_individual,
     Ri = Ri,
     Bi = Bi,

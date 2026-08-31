@@ -31,7 +31,6 @@ run_simulation <- function(params) {
     members = group_state$members,
     red_members = group_state$red_members,
     blue_members = group_state$blue_members,
-    outsiders = group_state$outsiders,
     groups_of_individual = group_state$groups_of_individual,
 
     Ri = group_state$Ri,
