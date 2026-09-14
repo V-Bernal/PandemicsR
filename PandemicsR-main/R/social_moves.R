@@ -491,7 +491,8 @@ red_to_blue <- function(state, group_i) {
       idx <- which(state$S_red_nodes == chosen)
       last <- length(state$S_red_nodes)
       state$S_red_nodes[idx] <- state$S_red_nodes[last]
-      state$S_red_nodes <- state$S_red_nodes[-last]
+      length(state$S_red_nodes) <- last - 1L
+      #state$S_red_nodes <- state$S_red_nodes[-last]
 
       state$S_blue_nodes <-
         c(state$S_blue_nodes, chosen)
@@ -507,7 +508,8 @@ red_to_blue <- function(state, group_i) {
       idx <- which(state$I_red_nodes == chosen)
       last <- length(state$I_red_nodes)
       state$I_red_nodes[idx] <- state$I_red_nodes[last]
-      state$I_red_nodes <- state$I_red_nodes[-last]
+      length(state$I_red_nodes) <- last - 1L
+      #state$I_red_nodes <- state$I_red_nodes[-last]
 
       state$I_blue_nodes <-
         c(state$I_blue_nodes, chosen)
@@ -523,7 +525,8 @@ red_to_blue <- function(state, group_i) {
       idx <- which(state$R_red_nodes == chosen)
       last <- length(state$R_red_nodes)
       state$R_red_nodes[idx] <- state$R_red_nodes[last]
-      state$R_red_nodes <- state$R_red_nodes[-last]
+      length(state$R_red_nodes) <- last - 1L
+      #state$R_red_nodes <- state$R_red_nodes[-last]
 
       state$R_blue_nodes <-
         c(state$R_blue_nodes, chosen)
@@ -597,52 +600,55 @@ blue_to_red <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
-      #state$S_red_nodes <-
-      #  state$S_red_nodes[state$S_red_nodes != chosen]
-      idx <- which(state$S_red_nodes == chosen)
-      last <- length(state$S_red_nodes)
-      state$S_red_nodes[idx] <- state$S_red_nodes[last]
-      state$S_red_nodes <- state$S_red_nodes[-last]
+      #state$S_blue_nodes <-
+      #  state$S_blue_nodes[state$S_blue_nodes != chosen]
+      idx <- which(state$S_blue_nodes == chosen)
+      last <- length(state$S_blue_nodes)
+      state$S_blue_nodes[idx] <- state$S_blue_nodes[last]
+      length(state$S_blue_nodes) <- last - 1L
+      #state$S_blue_nodes <- state$S_blue_nodes[-last]
 
-      state$S_blue_nodes <-
-        c(state$S_blue_nodes, chosen)
+      state$S_red_nodes <-
+        c(state$S_red_nodes, chosen)
 
-      state$S_red <- state$S_red - 1
-      state$S_blue <- state$S_blue + 1
+      state$S_red <- state$S_red + 1
+      state$S_blue <- state$S_blue - 1
 
     } else if (state$epi[chosen] == state$I) {
 
-      #state$I_red_nodes <-
-      #  state$I_red_nodes[state$I_red_nodes != chosen]
-      idx <- which(state$I_red_nodes == chosen)
-      last <- length(state$I_red_nodes)
-      state$I_red_nodes[idx] <- state$I_red_nodes[last]
-      state$I_red_nodes <- state$I_red_nodes[-last]
+      #state$I_blue_nodes <-
+      #  state$I_blue_nodes[state$I_blue_nodes != chosen]
+      idx <- which(state$I_blue_nodes == chosen)
+      last <- length(state$I_blue_nodes)
+      state$I_blue_nodes[idx] <- state$I_blue_nodes[last]
+      length(state$I_blue_nodes) <- last - 1L
+      # state$I_blue_nodes <- state$I_blue_nodes[-last]
 
-      state$I_blue_nodes <-
-        c(state$I_blue_nodes, chosen)
+      state$I_red_nodes <-
+        c(state$I_red_nodes, chosen)
 
-      state$I_red <- state$I_red - 1
-      state$I_blue <- state$I_blue + 1
+      state$I_red <- state$I_red + 1
+      state$I_blue <- state$I_blue - 1
 
     } else if (state$epi[chosen] == state$R) {
 
       #state$R_red_nodes <-
       #  state$R_red_nodes[state$R_red_nodes != chosen]
-      idx <- which(state$R_red_nodes == chosen)
-      last <- length(state$R_red_nodes)
-      state$R_red_nodes[idx] <- state$R_red_nodes[last]
-      state$R_red_nodes <- state$R_red_nodes[-last]
+      idx <- which(state$R_blue_nodes == chosen)
+      last <- length(state$R_blue_nodes)
+      state$R_blue_nodes[idx] <- state$R_blue_nodes[last]
+      length(state$R_blue_nodes) <- last - 1L
+      # state$R_blue_nodes <- state$R_blue_nodes[-last]
 
-      state$R_blue_nodes <-
-        c(state$R_blue_nodes, chosen)
+      state$R_red_nodes <-
+        c(state$R_red_nodes, chosen)
 
-      state$R_red <- state$R_red - 1
-      state$R_blue <- state$R_blue + 1
+      state$R_red <- state$R_red + 1
+      state$R_blue <- state$R_blue - 1
     }
 
-    state$total_red <- state$total_red - 1
-    state$total_blue <- state$total_blue + 1
+    state$total_red <- state$total_red + 1
+    state$total_blue <- state$total_blue - 1
   }
   #-------------------------------------------------------
   # Tracker
