@@ -482,8 +482,16 @@ red_to_blue <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
-      state$S_red_nodes <-
-        state$S_red_nodes[state$S_red_nodes != chosen]
+      # swap and pop
+      # state$S_red_nodes <-
+      #   state$S_red_nodes[state$S_red_nodes != chosen]
+      #
+      # state$S_blue_nodes <-
+      #   c(state$S_blue_nodes, chosen)
+      idx <- which(state$S_red_nodes == chosen)
+      last <- length(state$S_red_nodes)
+      state$S_red_nodes[idx] <- state$S_red_nodes[last]
+      state$S_red_nodes <- state$S_red_nodes[-last]
 
       state$S_blue_nodes <-
         c(state$S_blue_nodes, chosen)
@@ -493,8 +501,13 @@ red_to_blue <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$I) {
 
-      state$I_red_nodes <-
-        state$I_red_nodes[state$I_red_nodes != chosen]
+      # swap and pop
+      # state$I_red_nodes <-
+      #   state$I_red_nodes[state$I_red_nodes != chosen]
+      idx <- which(state$I_red_nodes == chosen)
+      last <- length(state$I_red_nodes)
+      state$I_red_nodes[idx] <- state$I_red_nodes[last]
+      state$I_red_nodes <- state$I_red_nodes[-last]
 
       state$I_blue_nodes <-
         c(state$I_blue_nodes, chosen)
@@ -504,8 +517,13 @@ red_to_blue <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$R) {
 
-      state$R_red_nodes <-
-        state$R_red_nodes[state$R_red_nodes != chosen]
+      # swap and pop
+      #state$R_red_nodes <-
+      #  state$R_red_nodes[state$R_red_nodes != chosen]
+      idx <- which(state$R_red_nodes == chosen)
+      last <- length(state$R_red_nodes)
+      state$R_red_nodes[idx] <- state$R_red_nodes[last]
+      state$R_red_nodes <- state$R_red_nodes[-last]
 
       state$R_blue_nodes <-
         c(state$R_blue_nodes, chosen)
@@ -579,8 +597,12 @@ blue_to_red <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
-      state$S_red_nodes <-
-        state$S_red_nodes[state$S_red_nodes != chosen]
+      #state$S_red_nodes <-
+      #  state$S_red_nodes[state$S_red_nodes != chosen]
+      idx <- which(state$S_red_nodes == chosen)
+      last <- length(state$S_red_nodes)
+      state$S_red_nodes[idx] <- state$S_red_nodes[last]
+      state$S_red_nodes <- state$S_red_nodes[-last]
 
       state$S_blue_nodes <-
         c(state$S_blue_nodes, chosen)
@@ -590,8 +612,12 @@ blue_to_red <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$I) {
 
-      state$I_red_nodes <-
-        state$I_red_nodes[state$I_red_nodes != chosen]
+      #state$I_red_nodes <-
+      #  state$I_red_nodes[state$I_red_nodes != chosen]
+      idx <- which(state$I_red_nodes == chosen)
+      last <- length(state$I_red_nodes)
+      state$I_red_nodes[idx] <- state$I_red_nodes[last]
+      state$I_red_nodes <- state$I_red_nodes[-last]
 
       state$I_blue_nodes <-
         c(state$I_blue_nodes, chosen)
@@ -601,8 +627,12 @@ blue_to_red <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$R) {
 
-      state$R_red_nodes <-
-        state$R_red_nodes[state$R_red_nodes != chosen]
+      #state$R_red_nodes <-
+      #  state$R_red_nodes[state$R_red_nodes != chosen]
+      idx <- which(state$R_red_nodes == chosen)
+      last <- length(state$R_red_nodes)
+      state$R_red_nodes[idx] <- state$R_red_nodes[last]
+      state$R_red_nodes <- state$R_red_nodes[-last]
 
       state$R_blue_nodes <-
         c(state$R_blue_nodes, chosen)
