@@ -14,7 +14,7 @@
 #' @param event_counter
 #' @export
 apply_epidemic_event <- function(state, rates, params, t) {
-  # cat("\n### APPLY EPIDEMIC EVENT CALLED ###\n")
+
   if (rates$epi_rate <= 0)
     return(state)
 
@@ -238,7 +238,6 @@ apply_epidemic_event <- function(state, rates, params, t) {
 
   check_epidemic_position_indexes(state)
   check_epidemic_camp_membership(state)
-  # cat("RECOVERY LISTS:", length(state$R_red_nodes), length(state$R_blue_nodes), "\n")
   return(state)
 }
 
