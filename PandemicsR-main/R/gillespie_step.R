@@ -65,6 +65,7 @@ gillespie_step <- function(state, params, t){
         event$group,
         params
       )
+      check_epidemic_position_indexes(state)
 
       }
 
@@ -90,6 +91,8 @@ gillespie_step <- function(state, params, t){
         params,
         t
       )
+
+      check_epidemic_position_indexes(state)
 
       #cat("AFTER epidemic event\n")
       #stopifnot(!anyNA(state$opinions))

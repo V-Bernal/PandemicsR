@@ -14,7 +14,7 @@
 #' @param event_counter
 #' @export
 apply_epidemic_event <- function(state, rates, params, t) {
-
+  # cat("\n### APPLY EPIDEMIC EVENT CALLED ###\n")
   if (rates$epi_rate <= 0)
     return(state)
 
@@ -37,17 +37,35 @@ apply_epidemic_event <- function(state, rates, params, t) {
         k <- sample.int(length(state$S_red_nodes), 1)
         i <- state$S_red_nodes[k]
 
-          #--- new: swap and pop
-          # state$S_red_nodes <-
-          #  state$S_red_nodes[state$S_red_nodes != i]
-          last <- length(state$S_red_nodes)
-          state$S_red_nodes[k] <- state$S_red_nodes[last]
-          state$S_red_nodes <- state$S_red_nodes[-last]
-          #-----
+        # Remove from S_red using swap-and-pop
+        last <- length(state$S_red_nodes)
+        last_node <- state$S_red_nodes[last]
+
+        state$S_red_nodes[k] <- last_node
+        state$S_red_pos[last_node] <- k
+        state$S_red_pos[i] <- 0L
+        length(state$S_red_nodes) <- last - 1L
+
+        # Add to I_red
+        state$I_red_nodes <- c(state$I_red_nodes, i)
+        state$I_red_pos[i] <- length(state$I_red_nodes)
 
         state$I_red <- state$I_red + 1
-        state$S_red  <- state$total_red  - state$I_red  - state$R_red
-        state$I_red_nodes <- c(state$I_red_nodes, i)
+        state$S_red <- state$total_red - state$I_red - state$R_red
+        # k <- sample.int(length(state$S_red_nodes), 1)
+        # i <- state$S_red_nodes[k]
+        #
+        #   #--- new: swap and pop
+        #   # state$S_red_nodes <-
+        #   #  state$S_red_nodes[state$S_red_nodes != i]
+        #   last <- length(state$S_red_nodes)
+        #   state$S_red_nodes[k] <- state$S_red_nodes[last]
+        #   state$S_red_nodes <- state$S_red_nodes[-last]
+        #   #-----
+        #
+        # state$I_red <- state$I_red + 1
+        # state$S_red  <- state$total_red  - state$I_red  - state$R_red
+        # state$I_red_nodes <- c(state$I_red_nodes, i)
 
       } else {
 
@@ -58,17 +76,36 @@ apply_epidemic_event <- function(state, rates, params, t) {
         k <- sample.int(length(state$S_blue_nodes), 1)
         i <- state$S_blue_nodes[k]
 
-        # new: swap and pop
-        # state$S_blue_nodes <-
-        #  state$S_blue_nodes[state$S_blue_nodes != i]
+        # Remove from S_blue using swap-and-pop
         last <- length(state$S_blue_nodes)
-        state$S_blue_nodes[k] <- state$S_blue_nodes[last]
-        state$S_blue_nodes <- state$S_blue_nodes[-last]
-        #
+        last_node <- state$S_blue_nodes[last]
+
+        state$S_blue_nodes[k] <- last_node
+        state$S_blue_pos[last_node] <- k
+        state$S_blue_pos[i] <- 0L
+        length(state$S_blue_nodes) <- last - 1L
+
+        # Add to I_blue
+        state$I_blue_nodes <- c(state$I_blue_nodes, i)
+        state$I_blue_pos[i] <- length(state$I_blue_nodes)
 
         state$I_blue <- state$I_blue + 1
         state$S_blue <- state$total_blue - state$I_blue - state$R_blue
-        state$I_blue_nodes <- c(state$I_blue_nodes, i)
+
+        # k <- sample.int(length(state$S_blue_nodes), 1)
+        # i <- state$S_blue_nodes[k]
+        #
+        # # new: swap and pop
+        # # state$S_blue_nodes <-
+        # #  state$S_blue_nodes[state$S_blue_nodes != i]
+        # last <- length(state$S_blue_nodes)
+        # state$S_blue_nodes[k] <- state$S_blue_nodes[last]
+        # state$S_blue_nodes <- state$S_blue_nodes[-last]
+        # #
+        #
+        # state$I_blue <- state$I_blue + 1
+        # state$S_blue <- state$total_blue - state$I_blue - state$R_blue
+        # state$I_blue_nodes <- c(state$I_blue_nodes, i)
 
       }
 
@@ -123,29 +160,85 @@ apply_epidemic_event <- function(state, rates, params, t) {
         state$I_red <- state$I_red - 1
         state$R_red <- state$R_red + 1
 
-        state$I_red_nodes <-
-        state$I_red_nodes[state$I_red_nodes != i]
+        # state$I_red_nodes <-
+        # state$I_red_nodes[state$I_red_nodes != i]
+        #
+        # state$R_red_nodes <-
+        #   c(state$R_red_nodes, i)
+        # Remove from I_red using swap-and-pop
+        idx <- state$I_red_pos[i]
+        last <- length(state$I_red_nodes)
+        last_node <- state$I_red_nodes[last]
 
-        state$R_red_nodes <-
-          c(state$R_red_nodes, i)
+        state$I_red_nodes[idx] <- last_node
+        state$I_red_pos[last_node] <- idx
+        state$I_red_pos[i] <- 0L
+        length(state$I_red_nodes) <- last - 1L
+
+        # Add to R_red
+        state$R_red_nodes <- c(state$R_red_nodes, i)
+        state$R_red_pos[i] <- length(state$R_red_nodes)
+
+        # cat(
+        #   "\nRECOVERY RED:",
+        #   "i =", i,
+        #   "R_red_nodes =", paste(state$R_red_nodes, collapse = ","),
+        #   "R_red_pos[i] =", state$R_red_pos[i],
+        #   "\n"
+        # )
+
+        stopifnot(
+          i %in% state$R_red_nodes,
+          state$R_red_pos[i] > 0L,
+          state$R_red_nodes[state$R_red_pos[i]] == i
+        )
 
       } else {
 
         state$I_blue <- state$I_blue - 1
         state$R_blue <- state$R_blue + 1
 
-        state$I_blue_nodes <-
-          state$I_blue_nodes[state$I_blue_nodes != i]
+        # state$I_blue_nodes <-
+        #   state$I_blue_nodes[state$I_blue_nodes != i]
+        #
+        # state$R_blue_nodes <-
+        #   c(state$R_blue_nodes, i)
+        # Remove from I_blue using swap-and-pop
+        idx <- state$I_blue_pos[i]
+        last <- length(state$I_blue_nodes)
+        last_node <- state$I_blue_nodes[last]
 
-        state$R_blue_nodes <-
-          c(state$R_blue_nodes, i)
+        state$I_blue_nodes[idx] <- last_node
+        state$I_blue_pos[last_node] <- idx
+        state$I_blue_pos[i] <- 0L
+        length(state$I_blue_nodes) <- last - 1L
+
+        # Add to R_blue
+        state$R_blue_nodes <- c(state$R_blue_nodes, i)
+        state$R_blue_pos[i] <- length(state$R_blue_nodes)
+
+        # cat(
+        #   "\nRECOVERY BLUE:",
+        #   "i =", i,
+        #   "R_blue_nodes =", paste(state$R_blue_nodes, collapse = ","),
+        #   "R_blue_pos[i] =", state$R_blue_pos[i],
+        #   "\n"
+        # )
+
+        stopifnot(
+          i %in% state$R_blue_nodes,
+          state$R_blue_pos[i] > 0L,
+          state$R_blue_nodes[state$R_blue_pos[i]] == i
+        )
 
       }
 
 
     }
 
-
+  check_epidemic_position_indexes(state)
+  check_epidemic_camp_membership(state)
+  # cat("RECOVERY LISTS:", length(state$R_red_nodes), length(state$R_blue_nodes), "\n")
   return(state)
 }
 
