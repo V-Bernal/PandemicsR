@@ -47,3 +47,4 @@ check_stopping <- function(state, params) {
     reason = NULL
   )
 }
+
