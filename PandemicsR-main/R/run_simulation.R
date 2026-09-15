@@ -110,6 +110,8 @@ run_simulation <- function(params) {
     state <- step$state
     t <- step$t
 
+    check_epidemic_position_indexes(state)
+
     # stop no event (zero or negative rates), or maximum time
     if (step$stop) {
       stop_reason <- step$reason
@@ -120,9 +122,9 @@ run_simulation <- function(params) {
 
     # Start epidemic by time
     if (params$epi_trigger == "time") {
-      print('start epi time')
+      #print('start epi time')
       stability_monitor$is_stable <- (t >= params$epi_time)
-      print(stability_monitor$is_stable)
+      #print(stability_monitor$is_stable)
     }else{
       stability_monitor <- update_stability(
         stability_monitor,
@@ -145,6 +147,8 @@ run_simulation <- function(params) {
       )
 
       state[names(epi_state)] <- epi_state
+
+      check_epidemic_position_indexes(state)
     }
 
     # Stopping criteria by full polarization, or ended epidemic.
