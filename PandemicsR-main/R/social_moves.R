@@ -482,39 +482,66 @@ red_to_blue <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
+      # swap and pop and position index
+      idx <- state$S_red_pos[chosen]
+      last <- length(state$S_red_nodes)
+      last_node <- state$S_red_nodes[last]
+
+      # Remove from S_red using swap-and-pop
+      state$S_red_nodes[idx] <- last_node
+      state$S_red_pos[last_node] <- idx
+      state$S_red_pos[chosen] <- 0L
+      length(state$S_red_nodes) <- last - 1L
+
+      # Add to S_blue
+      state$S_blue_nodes <- c(state$S_blue_nodes, chosen)
+      state$S_blue_pos[chosen] <- length(state$S_blue_nodes)
+
       # swap and pop
       # state$S_red_nodes <-
       #   state$S_red_nodes[state$S_red_nodes != chosen]
       #
       # state$S_blue_nodes <-
       #   c(state$S_blue_nodes, chosen)
-      idx <- which(state$S_red_nodes == chosen)
-      stopifnot(length(idx) == 1L)
-      last <- length(state$S_red_nodes)
-      state$S_red_nodes[idx] <- state$S_red_nodes[last]
-      length(state$S_red_nodes) <- last - 1L
-      #state$S_red_nodes <- state$S_red_nodes[-last]
-
-      state$S_blue_nodes <-
-        c(state$S_blue_nodes, chosen)
+      # idx <- which(state$S_red_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$S_red_nodes)
+      # state$S_red_nodes[idx] <- state$S_red_nodes[last]
+      # length(state$S_red_nodes) <- last - 1L
+      # #state$S_red_nodes <- state$S_red_nodes[-last]
+      #
+      # state$S_blue_nodes <-
+      #   c(state$S_blue_nodes, chosen)
 
       state$S_red <- state$S_red - 1
       state$S_blue <- state$S_blue + 1
 
     } else if (state$epi[chosen] == state$I) {
 
-      # swap and pop
-      # state$I_red_nodes <-
-      #   state$I_red_nodes[state$I_red_nodes != chosen]
-      idx <- which(state$I_red_nodes == chosen)
-      stopifnot(length(idx) == 1L)
+      # # swap and pop
+      idx <- state$I_red_pos[chosen]
       last <- length(state$I_red_nodes)
-      state$I_red_nodes[idx] <- state$I_red_nodes[last]
-      length(state$I_red_nodes) <- last - 1L
-      #state$I_red_nodes <- state$I_red_nodes[-last]
+      last_node <- state$I_red_nodes[last]
 
-      state$I_blue_nodes <-
-        c(state$I_blue_nodes, chosen)
+      # Remove from I_red using swap-and-pop
+      state$I_red_nodes[idx] <- last_node
+      state$I_red_pos[last_node] <- idx
+      state$I_red_pos[chosen] <- 0L
+      length(state$I_red_nodes) <- last - 1L
+
+      # Add to I_blue
+      state$I_blue_nodes <- c(state$I_blue_nodes, chosen)
+      state$I_blue_pos[chosen] <- length(state$I_blue_nodes)
+      # # state$I_red_nodes <-
+      # #   state$I_red_nodes[state$I_red_nodes != chosen]
+      # idx <- which(state$I_red_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$I_red_nodes)
+      # state$I_red_nodes[idx] <- state$I_red_nodes[last]
+      # length(state$I_red_nodes) <- last - 1L
+      # #state$I_red_nodes <- state$I_red_nodes[-last]
+      # state$I_blue_nodes <-
+      #   c(state$I_blue_nodes, chosen)
 
       state$I_red <- state$I_red - 1
       state$I_blue <- state$I_blue + 1
@@ -522,17 +549,29 @@ red_to_blue <- function(state, group_i) {
     } else if (state$epi[chosen] == state$R) {
 
       # swap and pop
-      #state$R_red_nodes <-
-      #  state$R_red_nodes[state$R_red_nodes != chosen]
-      idx <- which(state$R_red_nodes == chosen)
-      stopifnot(length(idx) == 1L)
+      idx <- state$R_red_pos[chosen]
       last <- length(state$R_red_nodes)
-      state$R_red_nodes[idx] <- state$R_red_nodes[last]
-      length(state$R_red_nodes) <- last - 1L
-      #state$R_red_nodes <- state$R_red_nodes[-last]
+      last_node <- state$R_red_nodes[last]
 
-      state$R_blue_nodes <-
-        c(state$R_blue_nodes, chosen)
+      # Remove from R_red using swap-and-pop
+      state$R_red_nodes[idx] <- last_node
+      state$R_red_pos[last_node] <- idx
+      state$R_red_pos[chosen] <- 0L
+      length(state$R_red_nodes) <- last - 1L
+
+      # Add to R_blue
+      state$R_blue_nodes <- c(state$R_blue_nodes, chosen)
+      state$R_blue_pos[chosen] <- length(state$R_blue_nodes)
+      # #state$R_red_nodes <-
+      # #  state$R_red_nodes[state$R_red_nodes != chosen]
+      # idx <- which(state$R_red_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$R_red_nodes)
+      # state$R_red_nodes[idx] <- state$R_red_nodes[last]
+      # length(state$R_red_nodes) <- last - 1L
+      # #state$R_red_nodes <- state$R_red_nodes[-last]
+      # state$R_blue_nodes <-
+      #   c(state$R_blue_nodes, chosen)
 
       state$R_red <- state$R_red - 1
       state$R_blue <- state$R_blue + 1
@@ -547,6 +586,9 @@ red_to_blue <- function(state, group_i) {
   #-------------------------------------------------------
   state$opinion_changes <-
     state$opinion_changes + 1
+
+  check_epidemic_position_indexes(state)
+  check_epidemic_camp_membership(state)
 
   return(state)
 }
@@ -603,51 +645,106 @@ blue_to_red <- function(state, group_i) {
 
     if (state$epi[chosen] == state$S) {
 
-      #state$S_blue_nodes <-
-      #  state$S_blue_nodes[state$S_blue_nodes != chosen]
-      idx <- which(state$S_blue_nodes == chosen)
-      stopifnot(length(idx) == 1L)
+      idx <- state$S_blue_pos[chosen]
       last <- length(state$S_blue_nodes)
-      state$S_blue_nodes[idx] <- state$S_blue_nodes[last]
-      length(state$S_blue_nodes) <- last - 1L
-      #state$S_blue_nodes <- state$S_blue_nodes[-last]
+      last_node <- state$S_blue_nodes[last]
 
-      state$S_red_nodes <-
-        c(state$S_red_nodes, chosen)
+      # Remove from S_blue using swap-and-pop
+      state$S_blue_nodes[idx] <- last_node
+      state$S_blue_pos[last_node] <- idx
+      state$S_blue_pos[chosen] <- 0L
+      length(state$S_blue_nodes) <- last - 1L
+
+      # Add to S_red
+      state$S_red_nodes <- c(state$S_red_nodes, chosen)
+      state$S_red_pos[chosen] <- length(state$S_red_nodes)
+
+      # #state$S_blue_nodes <-
+      # #  state$S_blue_nodes[state$S_blue_nodes != chosen]
+      # idx <- which(state$S_blue_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$S_blue_nodes)
+      # state$S_blue_nodes[idx] <- state$S_blue_nodes[last]
+      # length(state$S_blue_nodes) <- last - 1L
+      # #state$S_blue_nodes <- state$S_blue_nodes[-last]
+      #
+      # state$S_red_nodes <-
+      #   c(state$S_red_nodes, chosen)
 
       state$S_red <- state$S_red + 1
       state$S_blue <- state$S_blue - 1
 
     } else if (state$epi[chosen] == state$I) {
 
-      #state$I_blue_nodes <-
-      #  state$I_blue_nodes[state$I_blue_nodes != chosen]
-      idx <- which(state$I_blue_nodes == chosen)
-      stopifnot(length(idx) == 1L)
+      idx <- state$I_blue_pos[chosen]
       last <- length(state$I_blue_nodes)
-      state$I_blue_nodes[idx] <- state$I_blue_nodes[last]
-      length(state$I_blue_nodes) <- last - 1L
-      # state$I_blue_nodes <- state$I_blue_nodes[-last]
+      last_node <- state$I_blue_nodes[last]
 
-      state$I_red_nodes <-
-        c(state$I_red_nodes, chosen)
+      # Remove from I_blue using swap-and-pop
+      state$I_blue_nodes[idx] <- last_node
+      state$I_blue_pos[last_node] <- idx
+      state$I_blue_pos[chosen] <- 0L
+      length(state$I_blue_nodes) <- last - 1L
+
+      # Add to I_red
+      state$I_red_nodes <- c(state$I_red_nodes, chosen)
+      state$I_red_pos[chosen] <- length(state$I_red_nodes)
+
+      # #state$I_blue_nodes <-
+      # #  state$I_blue_nodes[state$I_blue_nodes != chosen]
+      # idx <- which(state$I_blue_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$I_blue_nodes)
+      # state$I_blue_nodes[idx] <- state$I_blue_nodes[last]
+      # length(state$I_blue_nodes) <- last - 1L
+      # # state$I_blue_nodes <- state$I_blue_nodes[-last]
+      #
+      # state$I_red_nodes <-
+      #   c(state$I_red_nodes, chosen)
 
       state$I_red <- state$I_red + 1
       state$I_blue <- state$I_blue - 1
 
     } else if (state$epi[chosen] == state$R) {
 
-      #state$R_blue_nodes <-
-      #  state$R_blue_nodes[state$R_blue_nodes != chosen]
-      idx <- which(state$R_blue_nodes == chosen)
-      stopifnot(length(idx) == 1L)
-      last <- length(state$R_blue_nodes)
-      state$R_blue_nodes[idx] <- state$R_blue_nodes[last]
-      length(state$R_blue_nodes) <- last - 1L
-      # state$R_blue_nodes <- state$R_blue_nodes[-last]
+      # cat(
+      #   "\n--- R BLUE DEBUG ---\n",
+      #   "chosen =", chosen, "\n",
+      #   "epi =", state$epi[chosen], "\n",
+      #   "length R_blue_nodes =", length(state$R_blue_nodes), "\n",
+      #   "R_blue_nodes =", paste(state$R_blue_nodes, collapse = ","), "\n",
+      #   "chosen in R_blue_nodes =", chosen %in% state$R_blue_nodes, "\n",
+      #   "R_blue_pos[chosen] =", state$R_blue_pos[chosen], "\n",
+      #   "R_red_nodes length =", length(state$R_red_nodes), "\n"
+      # )
+      #
+      # stop("DEBUG STOP")
 
-      state$R_red_nodes <-
-        c(state$R_red_nodes, chosen)
+      idx <- state$R_blue_pos[chosen]
+      last <- length(state$R_blue_nodes)
+      last_node <- state$R_blue_nodes[last]
+
+      # Remove from R_blue using swap-and-pop
+      state$R_blue_nodes[idx] <- last_node
+      state$R_blue_pos[last_node] <- idx
+      state$R_blue_pos[chosen] <- 0L
+      length(state$R_blue_nodes) <- last - 1L
+
+      # Add to R_red
+      state$R_red_nodes <- c(state$R_red_nodes, chosen)
+      state$R_red_pos[chosen] <- length(state$R_red_nodes)
+
+      # #state$R_blue_nodes <-
+      # #  state$R_blue_nodes[state$R_blue_nodes != chosen]
+      # idx <- which(state$R_blue_nodes == chosen)
+      # stopifnot(length(idx) == 1L)
+      # last <- length(state$R_blue_nodes)
+      # state$R_blue_nodes[idx] <- state$R_blue_nodes[last]
+      # length(state$R_blue_nodes) <- last - 1L
+      # # state$R_blue_nodes <- state$R_blue_nodes[-last]
+      #
+      # state$R_red_nodes <-
+      #   c(state$R_red_nodes, chosen)
 
       state$R_red <- state$R_red + 1
       state$R_blue <- state$R_blue - 1
@@ -661,6 +758,9 @@ blue_to_red <- function(state, group_i) {
   #-------------------------------------------------------
   state$opinion_changes <-
     state$opinion_changes + 1
+
+  check_epidemic_position_indexes(state)
+  check_epidemic_camp_membership(state)
 
   return(state)
 }
