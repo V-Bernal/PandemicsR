@@ -192,7 +192,7 @@ run_simulation <- function(params) {
       trackers$event_counter
     )
 
-  print(result)
+  #print(result)
 
     return(result)
 }

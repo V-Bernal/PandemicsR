@@ -29,11 +29,11 @@ ui <- fluidPage(
           column(6, numericInput( "n", "Individuals", value = 15) ),
           column(6, numericInput("m", "Groups", value = 3) )
           ),
-        
+
         fluidRow(column(6, numericInput("timesteps", "Max time", value = 100)),
           column(6,numericInput("lambda", "RIG weight (lambda) ",value = 1)) )
               ),
-      
+
       # wellPanel(
       #   radioButtons(
       #     "parameter_mode",
@@ -44,7 +44,7 @@ ui <- fluidPage(
       #     ),
       #     selected = "manual"
       #   ),
-      #   
+      #
       #   conditionalPanel(
       #     condition = "input.parameter_mode == 'scenario'",
       #   radioButtons(
@@ -61,17 +61,17 @@ ui <- fluidPage(
       # ),
       # textOutput("scenario_description")
       #   ),
-      # 
-      # 
+      #
+      #
       # ),
       # Section 2: Schelling
       wellPanel(
         h4("Schelling model"),
         checkboxInput("runSchelling", "Schelling model", value = FALSE),
-        
+
         conditionalPanel(
           condition = "input.runSchelling",
-          
+
         sliderInput("c_param", "join group rate c", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("beta_plus", "leave rate above tolerance", min = 0, step = 0.01, max = 1, value = 0.5),
         sliderInput("beta_minus", "leave rate below tolerance", min = 0, step = 0.01, max = 1, value = 0.2),
@@ -109,9 +109,9 @@ ui <- fluidPage(
       wellPanel(
         h4("Epidemics model"),
         checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
-        
+
         conditionalPanel(
-          
+
         condition = "input.runEpidemic",
         sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
         sliderInput("gamma_epi", "Recovery rate", min = 0.00, step = 0.1, max = 1000, value = 1),
@@ -119,13 +119,13 @@ ui <- fluidPage(
         sliderInput("beta_blue_blue", "Infection rate blue-blue", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("beta_red_blue", "Infection rate red-blue", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("beta_blue_red", "Infection rate blue-red", min = 0, step = 0.1, max = 1000, value = 1)
-        
+
         ),
-      
+
       # Section 5.1: Epidemics activation
       wellPanel(
         h4("Epidemic activation"),
-        
+
         selectInput(
           "epi_trigger",
           "Start epidemic after:",
@@ -135,10 +135,10 @@ ui <- fluidPage(
           ),
           selected = "time"
         ),
-        
+
         conditionalPanel(
           condition = "input.epi_trigger == 'time'",
-          
+
           numericInput(
             "epi_time",
             "Epidemic start time:",
@@ -147,10 +147,10 @@ ui <- fluidPage(
             step = 1
           )
         ),
-        
+
         conditionalPanel(
           condition = "input.epi_trigger == 'global_stability'",
-          
+
           numericInput(
             "stability_window",
             "Stability window (time):",
@@ -158,7 +158,7 @@ ui <- fluidPage(
             min = 1,
             step = 1
           ),
-          
+
           numericInput(
             "stability_threshold",
             "Stability threshold:",
@@ -243,9 +243,9 @@ ui <- fluidPage(
 
 
         ),
-        
+
         tabPanel("Epidemic's dynamics",
-                 
+
                  h4("Starting condition epidemics"),
                  textOutput("startReasonEpi"),
 
@@ -281,100 +281,103 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   simData <- eventReactive(input$runSim, {
-    
+
     p <- list(
-      
+
       # ==========================
       # Network
       # ==========================
-      
+
       n = input$n,
       m = input$m,
       t_max = input$timesteps,
       lambda = input$lambda,
-      
+
       # ==========================
       # Model switches
       # ==========================
-      
+
       runVoter = isTRUE(input$runVoter),
       runSchelling = isTRUE(input$runSchelling),
       runEpidemic = isTRUE(input$runEpidemic),
-      
+
       # ==========================
       # Opinions
       # ==========================
-      
+
       num_opinions = input$Numopinions,
-      
+
       # ==========================
       # Schelling
       # ==========================
-      
+
       c_param = input$c_param,
       beta_plus = input$beta_plus,
       beta_minus = input$beta_minus,
       T_threshold = input$T_threshold,
-      
+
       # ==========================
       # Voter / radicalization
       # ==========================
-      
+
       gamma = input$gamma,
-      
+
       alpha = input$alpha,
       alpha_deradicalization =
         input$alpha_deradicalization,
-      
+
       alpha0_rad = input$alpha0_rad,
       alpha0_derad = input$alpha0_derad,
-      
+
       # ==========================
       # Epidemic
       # ==========================
-      
+
       beta_red_red = input$beta_red_red,
       beta_red_blue = input$beta_red_blue,
       beta_blue_red = input$beta_blue_red,
       beta_blue_blue = input$beta_blue_blue,
-      
+
       gamma_epi = input$gamma_epi,
       I0 = input$I0,
-      
+
       # ==========================
       # Epidemic activation
       # ==========================
-      
+
       epi_trigger = input$epi_trigger,
-      
+
       epi_time =
         if (identical(input$epi_trigger, "time"))
           input$epi_time
       else
         NULL,
-      
+
       stability_window =
         if (identical(input$epi_trigger, "global_stability"))
           input$stability_window
       else
         NULL,
-      
+
       stability_threshold =
         if (identical(input$epi_trigger, "global_stability"))
           input$stability_threshold
       else
         NULL
     )
-    
+
     # print("PARAMETERS:")
     # print(p)
     run_simulation(p)
+
+
   })
+
 
   #==========================
   # Section 6: Visualization
   #==========================
-  
+
   # Stopping reason
   output$stopReason <- renderText({
     req(simData())
@@ -397,27 +400,27 @@ server <- function(input, output, session) {
   })
 
   output$scenario_description <- renderText({
-    
+
     switch(
       input$scenario,
-      
+
       resilient =
         "Moderate social dynamics, lower transmission and faster recovery.",
-      
+
       polarized =
         "Strong within-camp dynamics and segregation; cross-camp transmission is lower.",
-      
+
       radicalization =
         "Radicalization dominates deradicalization and epidemic persistence is favored.",
-      
+
       epidemic =
         "Strong epidemic pressure with active social feedback."
     )
   })
-  # Network 
+  # Network
   output$rig0Plot <- renderPlot({
-    req(simData())           
-    req(input$show_rig0)     
+    req(simData())
+    req(input$show_rig0)
 
     visual_step_multi(
       simData()$RIG0,
@@ -427,8 +430,8 @@ server <- function(input, output, session) {
   })
 
   output$rigPlot <- renderPlot({
-    req(simData())           
-    req(input$show_rig)     
+    req(simData())
+    req(input$show_rig)
 
     visual_step_multi(
       simData()$RIG,
@@ -436,19 +439,19 @@ server <- function(input, output, session) {
       simData()$num_opinions
     )
   })
-  
-  output$bipartite0Plot <- renderPlot({     
-    req(simData())           
-    req(input$show_rig0)     
-    visual_bipartite(simData()$B0, 
-                     simData()$opinion_history[,1], 
+
+  output$bipartite0Plot <- renderPlot({
+    req(simData())
+    req(input$show_rig0)
+    visual_bipartite(simData()$B0,
+                     simData()$opinion_history[,1],
                      simData()$num_opinions) })
 
   output$bipartitePlot <- renderPlot({
-    req(simData())          
-    req(input$show_rig)     
-    visual_bipartite(simData()$B, 
-                     simData()$opinion_history[,ncol( simData()$opinion_history)], 
+    req(simData())
+    req(input$show_rig)
+    visual_bipartite(simData()$B,
+                     simData()$opinion_history[,ncol( simData()$opinion_history)],
                      simData()$num_opinions) })
 
   # Voter's dynamics
@@ -460,19 +463,19 @@ server <- function(input, output, session) {
     )
   })
 
-  output$histo <- renderPlot({ 
-    req(simData()); 
-    visual_histo(simData()$opinion_history, 
+  output$histo <- renderPlot({
+    req(simData());
+    visual_histo(simData()$opinion_history,
                  simData()$num_opinions) })
-  
-  output$histogramGroup0 <- 
-    renderPlot({ req(simData()); 
-      visual_histo_pergroup(simData()$opinion_history[,1], 
+
+  output$histogramGroup0 <-
+    renderPlot({ req(simData());
+      visual_histo_pergroup(simData()$opinion_history[,1],
                             simData()$num_opinions, simData()$members0) })
-  
-  output$histogramGroup <- renderPlot({ 
-    req(simData()); 
-    visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)], 
+
+  output$histogramGroup <- renderPlot({
+    req(simData());
+    visual_histo_pergroup(simData()$opinion_history[,ncol( simData()$opinion_history)],
                           simData()$num_opinions, simData()$members) })
 
   # Epidemic layer
@@ -481,7 +484,7 @@ server <- function(input, output, session) {
     req(simData())
     paste("Epidemics started by stability:", simData()$stable)
   })
-  
+
   output$SIR1 <- renderPlot({
     req(simData())
     req(input$runEpidemic)
@@ -516,7 +519,7 @@ server <- function(input, output, session) {
       req(simData())
       # Temporary folder
       tmpdir <- tempdir()
-      
+
       # Helper function
       save_plot <- function(filename, plot_expr) {
         filepath <- file.path(tmpdir, filename)

@@ -489,6 +489,7 @@ red_to_blue <- function(state, group_i) {
       # state$S_blue_nodes <-
       #   c(state$S_blue_nodes, chosen)
       idx <- which(state$S_red_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$S_red_nodes)
       state$S_red_nodes[idx] <- state$S_red_nodes[last]
       length(state$S_red_nodes) <- last - 1L
@@ -506,6 +507,7 @@ red_to_blue <- function(state, group_i) {
       # state$I_red_nodes <-
       #   state$I_red_nodes[state$I_red_nodes != chosen]
       idx <- which(state$I_red_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$I_red_nodes)
       state$I_red_nodes[idx] <- state$I_red_nodes[last]
       length(state$I_red_nodes) <- last - 1L
@@ -523,6 +525,7 @@ red_to_blue <- function(state, group_i) {
       #state$R_red_nodes <-
       #  state$R_red_nodes[state$R_red_nodes != chosen]
       idx <- which(state$R_red_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$R_red_nodes)
       state$R_red_nodes[idx] <- state$R_red_nodes[last]
       length(state$R_red_nodes) <- last - 1L
@@ -603,6 +606,7 @@ blue_to_red <- function(state, group_i) {
       #state$S_blue_nodes <-
       #  state$S_blue_nodes[state$S_blue_nodes != chosen]
       idx <- which(state$S_blue_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$S_blue_nodes)
       state$S_blue_nodes[idx] <- state$S_blue_nodes[last]
       length(state$S_blue_nodes) <- last - 1L
@@ -619,6 +623,7 @@ blue_to_red <- function(state, group_i) {
       #state$I_blue_nodes <-
       #  state$I_blue_nodes[state$I_blue_nodes != chosen]
       idx <- which(state$I_blue_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$I_blue_nodes)
       state$I_blue_nodes[idx] <- state$I_blue_nodes[last]
       length(state$I_blue_nodes) <- last - 1L
@@ -632,9 +637,10 @@ blue_to_red <- function(state, group_i) {
 
     } else if (state$epi[chosen] == state$R) {
 
-      #state$R_red_nodes <-
-      #  state$R_red_nodes[state$R_red_nodes != chosen]
+      #state$R_blue_nodes <-
+      #  state$R_blue_nodes[state$R_blue_nodes != chosen]
       idx <- which(state$R_blue_nodes == chosen)
+      stopifnot(length(idx) == 1L)
       last <- length(state$R_blue_nodes)
       state$R_blue_nodes[idx] <- state$R_blue_nodes[last]
       length(state$R_blue_nodes) <- last - 1L
