@@ -4,14 +4,9 @@
 #'
 #' @param params Simulation parameters.
 #' @param opinions Current agent opinions.
-#' @param B0 Initial network adjacency matrix.
 #' @param state Current epidemic state.
-#' @param trackers Simulation trackers.
-#' @param network_state Current network state.
-#' @param stop_reason Simulation stop reason.
 #' @param t Current simulation time.
 #' @param comp_time Computed event time.
-#' @param event_counter Event counter.
 #'
 #' @return Updated simulation state.
 #' @export

@@ -11,7 +11,7 @@ gillespie_step(state, params, t)
 
 \item{params}{Simulation parameters.}
 
-\item{time}{Current simulation time.}
+\item{t}{Current simulation time.}
 }
 \value{
 Updated simulation state and time.

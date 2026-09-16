@@ -4,7 +4,7 @@
 #'
 #' @param params Simulation parameters.
 #' @param state Current simulation state.
-#' @param time Current simulation time.
+#' @param t Current simulation time.
 #'
 #' @return Updated simulation state and time.
 #' @export

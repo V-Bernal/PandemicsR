@@ -15,17 +15,7 @@ apply_epidemic_event(state, rates, params, t)
 
 \item{opinions}{Current agent opinions.}
 
-\item{B0}{Initial network adjacency matrix.}
-
-\item{trackers}{Simulation trackers.}
-
-\item{network_state}{Current network state.}
-
-\item{stop_reason}{Simulation stop reason.}
-
 \item{comp_time}{Computed event time.}
-
-\item{event_counter}{Event counter.}
 }
 \value{
 Updated simulation state.
