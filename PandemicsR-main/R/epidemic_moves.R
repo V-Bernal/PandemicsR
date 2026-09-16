@@ -23,7 +23,8 @@ apply_epidemic_event <- function(state, rates, params, t) {
     if (stats::runif(1) < rates$infection_rate_tot / rates$epi_rate) {
 
       #  1. Infection
-      #  1.1.Choose opinion
+
+      #  Choose opinion
       if (rates$infection_rate_tot <= 0)
         return(state)
 
@@ -33,7 +34,7 @@ apply_epidemic_event <- function(state, rates, params, t) {
         if (length(state$S_red_nodes) == 0)
           return(state)
 
-        # 1.2. remove i from red susceptibles
+        # remove i from red susceptibles
         k <- sample.int(length(state$S_red_nodes), 1)
         i <- state$S_red_nodes[k]
 
@@ -113,16 +114,24 @@ apply_epidemic_event <- function(state, rates, params, t) {
         state$inf_time <- c(state$inf_time, t)
         state$inf_camp <- c(
           state$inf_camp,
-          ifelse(state$opinions[i] < 0, "red", "blue")
-      )
+          ifelse(state$opinions[i] < 0, "red", "blue"))
 
         state$S_count <- state$S_count - 1
         state$I_count <- state$I_count + 1
+
         state$I_nodes <- c(state$I_nodes, i)
+        state$I_pos[i] <- length(state$I_nodes)
 
        # Remove from S_nodes (keep your existing swap-delete)
-       state$S_nodes <-
-       state$S_nodes[state$S_nodes != i]
+       # state$S_nodes <- state$S_nodes[state$S_nodes != i]
+        idx <- state$S_pos[i]
+        last <- length(state$S_nodes)
+        last_node <- state$S_nodes[last]
+
+        state$S_nodes[idx] <- last_node
+        state$S_pos[last_node] <- idx
+        state$S_pos[i] <- 0L
+        length(state$S_nodes) <- last - 1L
 
       state$epi[i] <- state$I
 
@@ -133,11 +142,7 @@ apply_epidemic_event <- function(state, rates, params, t) {
       if (length(state$I_nodes) == 0)
         return(state)
 
-      k <- sample.int(
-        length(state$I_nodes),
-        1
-      )
-
+      k <- sample.int(length(state$I_nodes), 1)
       i <- state$I_nodes[k]
 
       stopifnot(state$epi[i] == state$I)
@@ -146,10 +151,20 @@ apply_epidemic_event <- function(state, rates, params, t) {
       state$R_count <- state$R_count + 1
 
       # remove from I_nodes
-      state$I_nodes <- state$I_nodes[state$I_nodes != i]
+      #state$I_nodes <- state$I_nodes[state$I_nodes != i]
+      idx <- state$I_pos[i]
+      last <- length(state$I_nodes)
+      last_node <- state$I_nodes[last]
+
+      state$I_nodes[idx] <- last_node
+      state$I_pos[last_node] <- idx
+      state$I_pos[i] <- 0L
+      length(state$I_nodes) <- last - 1L
 
       # add to R_nodes
+      #state$R_nodes <- c(state$R_nodes, i)
       state$R_nodes <- c(state$R_nodes, i)
+      state$R_pos[i] <- length(state$R_nodes)
 
       # update epidemic state
       state$epi[i] <- state$R
@@ -198,11 +213,8 @@ apply_epidemic_event <- function(state, rates, params, t) {
         state$I_blue <- state$I_blue - 1
         state$R_blue <- state$R_blue + 1
 
-        # state$I_blue_nodes <-
-        #   state$I_blue_nodes[state$I_blue_nodes != i]
-        #
-        # state$R_blue_nodes <-
-        #   c(state$R_blue_nodes, i)
+        # state$I_blue_nodes <- state$I_blue_nodes[state$I_blue_nodes != i]
+        # state$R_blue_nodes <- c(state$R_blue_nodes, i)
         # Remove from I_blue using swap-and-pop
         idx <- state$I_blue_pos[i]
         last <- length(state$I_blue_nodes)
