@@ -174,6 +174,13 @@ init_epidemic <- function(params, opinions){
   R_blue_nodes <- integer(0)
 
   # # Positions for O(1) removal
+      S_pos <- integer(n)
+      I_pos <- integer(n)
+      R_pos <- integer(n)
+
+      S_pos[S_nodes] <- seq_along(S_nodes)
+      I_pos[I_nodes] <- seq_along(I_nodes)
+
       S_red_pos <- integer(n)
       S_blue_pos <- integer(n)
 
@@ -233,6 +240,10 @@ init_epidemic <- function(params, opinions){
     R_blue_nodes = R_blue_nodes,
 
     # Positions for O(1) removal
+    S_pos = S_pos,
+    I_pos = I_pos,
+    R_pos = R_pos,
+
     S_red_pos = S_red_pos,
     S_blue_pos = S_blue_pos,
 
