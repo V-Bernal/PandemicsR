@@ -34,36 +34,43 @@ ui <- fluidPage(
           column(6,numericInput("lambda", "RIG weight (lambda) ",value = 1)) )
               ),
 
-      # wellPanel(
-      #   radioButtons(
-      #     "parameter_mode",
-      #     "Simulation scenarios:",
-      #     choices = c(
-      #       "Manual" = "manual",
-      #       "Predefined scenario" = "scenario"
-      #     ),
-      #     selected = "manual"
-      #   ),
+
+      #==========================
+      # Simulation scenario
+      #==========================
       #
-      #   conditionalPanel(
-      #     condition = "input.parameter_mode == 'scenario'",
-      #   radioButtons(
-      #   "scenario",
-      #   "Simulation scenario:",
-      #   choices = c(
-      #     "Custom" = "custom",
-      #     "1. Resilient / Low-risk" = "resilient",
-      #     "2. Polarized / Segregated" = "polarized",
-      #     "3. Radicalization-dominated" = "radicalization",
-      #     "4. Epidemic-dominated" = "epidemic"
-      #   ),
-      #   selected = "resilient"
-      # ),
-      # textOutput("scenario_description")
-      #   ),
+      #       wellPanel(
+      #         radioButtons(
+      #           "parameter_mode",
+      #           "Simulation scenarios:",
+      #           choices = c(
+      #             "Manual" = "manual",
+      #             "Predefined scenario" = "scenario"
+      #           ),
+      #           selected = "manual"
+      #         ),
+      #
+      #         conditionalPanel(
+      #           condition = "input.parameter_mode == 'scenario'",
+      #         radioButtons(
+      #         "scenario",
+      #         "Simulation scenario:",
+      #         choices = c(
+      #           "Custom" = "custom",
+      #           "1. Resilient / Low-risk" = "resilient",
+      #           "2. Polarized / Segregated" = "polarized",
+      #           "3. Radicalization-dominated" = "radicalization",
+      #           "4. Epidemic-dominated" = "epidemic"
+      #         ),
+      #         selected = "resilient"
+      #       ),
+      #       textOutput("scenario_description")
+      #         ),
       #
       #
-      # ),
+      #       ),
+
+
       # Section 2: Schelling
       wellPanel(
         h4("Schelling model"),
@@ -80,8 +87,10 @@ ui <- fluidPage(
 
       # Section 3: Voter
       wellPanel(
+
         h4("Voter's model"),
         checkboxInput("runVoter", "Voter model", value = FALSE),
+
         sliderInput(
           "Numopinions",
           "Number of Opinions",
@@ -90,15 +99,15 @@ ui <- fluidPage(
           max = 4,
           value = 4
         ),
+
         conditionalPanel(
           condition = "input.runVoter",
-        sliderInput("gamma", "Opinions rate", min = 0, step = 0.1, max = 100, value = 5),
-        #sliderInput("Numopinions", "Number of Opinions", min = 2, step = 2, max = 4, value = 4),
+          sliderInput("gamma", "Opinions rate", min = 0, step = 0.1, max = 100, value = 5),
 
         # Section 4: Extremes
-        #h5("Extremes"),
         sliderInput("alpha", "radicalization rate", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("alpha_deradicalization", "deradicalization rate*", min = 0, step = 0.1, max = 1000, value = 1),
+
         h6("*stubborn opinions: set de-radicalization to zero"),
         sliderInput("alpha0_rad", "spontaneous radicalization rate", min = 0, step = 0.1, max = 1000, value = 0),
         sliderInput("alpha0_derad", "spontaneous deradicalization rate", min = 0, step = 0.1, max = 1000, value = 0)
@@ -111,7 +120,6 @@ ui <- fluidPage(
         checkboxInput("runEpidemic", "Epidemic model", value = FALSE),
 
         conditionalPanel(
-
         condition = "input.runEpidemic",
         sliderInput("I0", "Fraction of Infected", min = 0.01, step = 0.1, max = 1, value = 0.1),
         sliderInput("gamma_epi", "Recovery rate", min = 0.00, step = 0.1, max = 1000, value = 1),
@@ -119,13 +127,12 @@ ui <- fluidPage(
         sliderInput("beta_blue_blue", "Infection rate blue-blue", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("beta_red_blue", "Infection rate red-blue", min = 0, step = 0.1, max = 1000, value = 1),
         sliderInput("beta_blue_red", "Infection rate blue-red", min = 0, step = 0.1, max = 1000, value = 1)
-
         ),
 
       # Section 5.1: Epidemics activation
       wellPanel(
-        h4("Epidemic activation"),
 
+        h4("Epidemic activation"),
         selectInput(
           "epi_trigger",
           "Start epidemic after:",
