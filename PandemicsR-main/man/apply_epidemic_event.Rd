@@ -7,8 +7,29 @@
 apply_epidemic_event(state, rates, params, t)
 }
 \arguments{
+\item{state}{Current epidemic state.}
+
 \item{params}{Simulation parameters.}
+
+\item{t}{Current simulation time.}
+
+\item{opinions}{Current agent opinions.}
+
+\item{B0}{Initial network adjacency matrix.}
+
+\item{trackers}{Simulation trackers.}
+
+\item{network_state}{Current network state.}
+
+\item{stop_reason}{Simulation stop reason.}
+
+\item{comp_time}{Computed event time.}
+
+\item{event_counter}{Event counter.}
+}
+\value{
+Updated simulation state.
 }
 \description{
-epidemic_event
+Process an epidemic event in the simulation.
 }

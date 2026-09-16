@@ -7,8 +7,13 @@
 compute_rates(state, params)
 }
 \arguments{
+\item{state}{Current simulation state.}
+
 \item{params}{Simulation parameters.}
 }
+\value{
+Event rates.
+}
 \description{
-Rates
+Calculate event rates for the current simulation state.
 }

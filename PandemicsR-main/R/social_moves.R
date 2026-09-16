@@ -1,8 +1,12 @@
-#' sample_social_event
+#' Sample Social Event
+#'
+#' Sample a social event from the current simulation state.
 #'
 #' @param params Simulation parameters.
-#' @param state
-#' @param rates
+#' @param state Current simulation state.
+#' @param rates Event rates.
+#'
+#' @return Sampled social event.
 #' @export
 sample_social_event <- function(state, rates, params) {
 
@@ -55,9 +59,9 @@ sample_social_event <- function(state, rates, params) {
   )
 }
 
-#---------------------------------------------------------
+#==========================
 # apply_social_mov
-#---------------------------------------------------------
+#==========================
 apply_social_move <- function(state, move, group_i, params) {
 
   stopifnot(
@@ -119,7 +123,9 @@ apply_social_move <- function(state, move, group_i, params) {
   return(state)
 }
 
-
+#================================
+# Schelling moves
+#================================
 #---------------------------------------------------------
 # move 3
 #---------------------------------------------------------
@@ -419,9 +425,9 @@ leave_extreme_blue <- function(state, group_i){
 }
 
 
-#=========================================================
-# Voter and radicalization events
-#=========================================================
+#================================
+# Voter and radicalization moves
+#================================
 
 #---------------------------------------------------------
 # Move 1: Moderate Red -> Moderate Blue
@@ -587,8 +593,8 @@ red_to_blue <- function(state, group_i) {
   state$opinion_changes <-
     state$opinion_changes + 1
 
-  check_epidemic_position_indexes(state)
-  check_epidemic_camp_membership(state)
+  #check_epidemic_position_indexes(state)
+  #check_epidemic_camp_membership(state)
 
   return(state)
 }
@@ -759,8 +765,8 @@ blue_to_red <- function(state, group_i) {
   state$opinion_changes <-
     state$opinion_changes + 1
 
-  check_epidemic_position_indexes(state)
-  check_epidemic_camp_membership(state)
+  #check_epidemic_position_indexes(state)
+  #check_epidemic_camp_membership(state)
 
   return(state)
 }

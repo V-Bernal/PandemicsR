@@ -2,13 +2,20 @@
 % Please edit documentation in R/social_moves.R
 \name{sample_social_event}
 \alias{sample_social_event}
-\title{sample_social_event}
+\title{Sample Social Event}
 \usage{
 sample_social_event(state, rates, params)
 }
 \arguments{
+\item{state}{Current simulation state.}
+
+\item{rates}{Event rates.}
+
 \item{params}{Simulation parameters.}
 }
+\value{
+Sampled social event.
+}
 \description{
-sample_social_event
+Sample a social event from the current simulation state.
 }

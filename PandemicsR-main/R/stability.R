@@ -1,7 +1,12 @@
-#' Stability monitoring
-#' @param monitor
-#' @param state
-#' @param time
+#' Stability Monitoring
+#'
+#' Monitor simulation stability over time.
+#'
+#' @param monitor Stability monitoring state.
+#' @param state Current simulation state.
+#' @param time Current simulation time.
+#'
+#' @return Updated stability monitor.
 #' @export
 # ------------------------------------------------------------
 # Stability monitoring

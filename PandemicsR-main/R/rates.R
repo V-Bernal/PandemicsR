@@ -1,7 +1,11 @@
 #' Rates
 #'
+#' Calculate event rates for the current simulation state.
+#'
 #' @param params Simulation parameters.
-#' @state state
+#' @param state Current simulation state.
+#'
+#' @return Event rates.
 #' @export
 compute_rates <- function(state, params){
 

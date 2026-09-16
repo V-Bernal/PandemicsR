@@ -2,13 +2,20 @@
 % Please edit documentation in R/trackers.R
 \name{init_trackers}
 \alias{init_trackers}
-\title{trackers}
+\title{Track Simulation State}
 \usage{
 init_trackers(params, opinions)
 }
 \arguments{
 \item{params}{Simulation parameters.}
+
+\item{opinions}{Agent opinions.}
+
+\item{t}{Current simulation time.}
+}
+\value{
+Updated simulation trackers.
 }
 \description{
-trackers
+Update simulation trackers.
 }

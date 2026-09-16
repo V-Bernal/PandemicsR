@@ -8,7 +8,28 @@ init_network(params)
 }
 \arguments{
 \item{params}{Simulation parameters.}
+
+\item{opinions}{Agent opinions.}
+
+\item{B0}{Initial network adjacency matrix.}
+
+\item{state}{Current simulation state.}
+
+\item{trackers}{Simulation trackers.}
+
+\item{network_state}{Network state.}
+
+\item{stop_reason}{Simulation stop reason.}
+
+\item{t}{Current simulation time.}
+
+\item{comp_time}{Computed event time.}
+
+\item{event_counter}{Event counter.}
+}
+\value{
+Initialized network state.
 }
 \description{
-Initialize Network
+Initialize the simulation network.
 }

@@ -2,13 +2,23 @@
 % Please edit documentation in R/stability.R
 \name{create_stability_monitor}
 \alias{create_stability_monitor}
-\title{Stability monitoring}
+\title{Stability Monitoring}
 \usage{
 create_stability_monitor(
   window = stability_window,
   threshold = stability_threshold
 )
 }
+\arguments{
+\item{monitor}{Stability monitoring state.}
+
+\item{state}{Current simulation state.}
+
+\item{time}{Current simulation time.}
+}
+\value{
+Updated stability monitor.
+}
 \description{
-Stability monitoring
+Monitor simulation stability over time.
 }

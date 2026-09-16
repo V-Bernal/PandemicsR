@@ -1,9 +1,12 @@
-#' trackers
+#' Track Simulation State
+#'
+#' Update simulation trackers.
 #'
 #' @param params Simulation parameters.
-#' @param opinions
-#' @param t,
-#' @param params
+#' @param opinions Agent opinions.
+#' @param t Current simulation time.
+#'
+#' @return Updated simulation trackers.
 #' @export
 init_trackers <- function(params, opinions) {
 

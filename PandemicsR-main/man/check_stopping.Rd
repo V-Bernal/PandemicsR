@@ -2,13 +2,34 @@
 % Please edit documentation in R/stopping.R
 \name{check_stopping}
 \alias{check_stopping}
-\title{stopping}
+\title{Stopping}
 \usage{
 check_stopping(state, params)
 }
 \arguments{
+\item{state}{Current simulation state.}
+
 \item{params}{Simulation parameters.}
+
+\item{opinions}{Agent opinions.}
+
+\item{B0}{Initial network adjacency matrix.}
+
+\item{trackers}{Simulation trackers.}
+
+\item{network_state}{Current network state.}
+
+\item{stop_reason}{Current stopping reason.}
+
+\item{t}{Current simulation time.}
+
+\item{comp_time}{Computed event time.}
+
+\item{event_counter}{Event counter.}
+}
+\value{
+Updated stopping state.
 }
 \description{
-stopping
+Determine whether the simulation should stop.
 }

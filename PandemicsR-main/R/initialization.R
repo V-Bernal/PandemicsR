@@ -1,17 +1,19 @@
 #' Initialize Network
 #'
+#' Initialize the simulation network.
+#'
 #' @param params Simulation parameters.
-#' @param opinions
-#' @param B0
-#' @param params
-#' @param state,
-#' @param trackers
-#' @param params
-#' @param network_state
-#' @param stop_reason
-#' @param t
-#' @param comp_time
-#' @param event_counter
+#' @param opinions Agent opinions.
+#' @param B0 Initial network adjacency matrix.
+#' @param state Current simulation state.
+#' @param trackers Simulation trackers.
+#' @param network_state Network state.
+#' @param stop_reason Simulation stop reason.
+#' @param t Current simulation time.
+#' @param comp_time Computed event time.
+#' @param event_counter Event counter.
+#'
+#' @return Initialized network state.
 #' @export
 #==========================
 # Initialize Network

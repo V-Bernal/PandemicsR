@@ -2,13 +2,20 @@
 % Please edit documentation in R/gillespie_step.R
 \name{gillespie_step}
 \alias{gillespie_step}
-\title{Gillespie step}
+\title{Gillespie Step}
 \usage{
 gillespie_step(state, params, t)
 }
 \arguments{
+\item{state}{Current simulation state.}
+
 \item{params}{Simulation parameters.}
+
+\item{time}{Current simulation time.}
+}
+\value{
+Updated simulation state and time.
 }
 \description{
-Gillespie step
+Perform one Gillespie simulation step.
 }

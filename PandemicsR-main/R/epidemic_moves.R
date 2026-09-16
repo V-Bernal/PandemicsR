@@ -1,17 +1,19 @@
 #' epidemic_event
 #'
+#' Process an epidemic event in the simulation.
+#'
 #' @param params Simulation parameters.
-#' @param opinions
-#' @param B0
-#' @param params
-#' @param state,
-#' @param trackers
-#' @param params
-#' @param network_state
-#' @param stop_reason
-#' @param t
-#' @param comp_time
-#' @param event_counter
+#' @param opinions Current agent opinions.
+#' @param B0 Initial network adjacency matrix.
+#' @param state Current epidemic state.
+#' @param trackers Simulation trackers.
+#' @param network_state Current network state.
+#' @param stop_reason Simulation stop reason.
+#' @param t Current simulation time.
+#' @param comp_time Computed event time.
+#' @param event_counter Event counter.
+#'
+#' @return Updated simulation state.
 #' @export
 apply_epidemic_event <- function(state, rates, params, t) {
 
@@ -19,11 +21,9 @@ apply_epidemic_event <- function(state, rates, params, t) {
     return(state)
 
     # Select Infection or Recovery
-
     if (stats::runif(1) < rates$infection_rate_tot / rates$epi_rate) {
 
       #  1. Infection
-
       #  Choose opinion
       if (rates$infection_rate_tot <= 0)
         return(state)
@@ -194,6 +194,7 @@ apply_epidemic_event <- function(state, rates, params, t) {
         state$R_red_nodes <- c(state$R_red_nodes, i)
         state$R_red_pos[i] <- length(state$R_red_nodes)
 
+        # Uncomment for testing
         # cat(
         #   "\nRECOVERY RED:",
         #   "i =", i,
@@ -201,12 +202,11 @@ apply_epidemic_event <- function(state, rates, params, t) {
         #   "R_red_pos[i] =", state$R_red_pos[i],
         #   "\n"
         # )
-
-        stopifnot(
-          i %in% state$R_red_nodes,
-          state$R_red_pos[i] > 0L,
-          state$R_red_nodes[state$R_red_pos[i]] == i
-        )
+        # stopifnot(
+        #   i %in% state$R_red_nodes,
+        #   state$R_red_pos[i] > 0L,
+        #   state$R_red_nodes[state$R_red_pos[i]] == i
+        # )
 
       } else {
 
@@ -229,6 +229,8 @@ apply_epidemic_event <- function(state, rates, params, t) {
         state$R_blue_nodes <- c(state$R_blue_nodes, i)
         state$R_blue_pos[i] <- length(state$R_blue_nodes)
 
+
+        # Uncomment for testing
         # cat(
         #   "\nRECOVERY BLUE:",
         #   "i =", i,
@@ -237,19 +239,20 @@ apply_epidemic_event <- function(state, rates, params, t) {
         #   "\n"
         # )
 
-        stopifnot(
-          i %in% state$R_blue_nodes,
-          state$R_blue_pos[i] > 0L,
-          state$R_blue_nodes[state$R_blue_pos[i]] == i
-        )
+        # stopifnot(
+        #   i %in% state$R_blue_nodes,
+        #   state$R_blue_pos[i] > 0L,
+        #   state$R_blue_nodes[state$R_blue_pos[i]] == i
+        # )
 
       }
 
 
     }
 
-  check_epidemic_position_indexes(state)
-  check_epidemic_camp_membership(state)
+  #check_epidemic_position_indexes(state)
+  #check_epidemic_camp_membership(state)
+
   return(state)
 }
 

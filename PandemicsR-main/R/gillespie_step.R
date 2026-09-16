@@ -1,8 +1,12 @@
-#' Gillespie step
+#' Gillespie Step
+#'
+#' Perform one Gillespie simulation step.
 #'
 #' @param params Simulation parameters.
-#' @state state
-#' @t time
+#' @param state Current simulation state.
+#' @param time Current simulation time.
+#'
+#' @return Updated simulation state and time.
 #' @export
 gillespie_step <- function(state, params, t){
 
