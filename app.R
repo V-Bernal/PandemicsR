@@ -4,6 +4,64 @@ library(Matrix)
 library(PandemicsR)
 library(zip)
 
+SCENARIOS <- list(
+
+  resilient = list(
+    gamma = 0.20,
+    alpha = 0.05,
+    alpha_deradicalization = 0.20,
+    alpha0_rad = 0.005,
+    alpha0_derad = 0.01,
+
+    gamma_epi = 0.20,
+    beta_red_red = 0.08,
+    beta_red_blue = 0.04,
+    beta_blue_red = 0.04,
+    beta_blue_blue = 0.08
+  ),
+
+  polarized = list(
+    gamma = 0.20,
+    alpha = 0.10,
+    alpha_deradicalization = 0.05,
+    alpha0_rad = 0.005,
+    alpha0_derad = 0.002,
+
+    gamma_epi = 0.15,
+    beta_red_red = 0.10,
+    beta_red_blue = 0.02,
+    beta_blue_red = 0.02,
+    beta_blue_blue = 0.10
+  ),
+
+  radicalization = list(
+    gamma = 0.20,
+    alpha = 0.25,
+    alpha_deradicalization = 0.03,
+    alpha0_rad = 0.01,
+    alpha0_derad = 0.001,
+
+    gamma_epi = 0.10,
+    beta_red_red = 0.12,
+    beta_red_blue = 0.06,
+    beta_blue_red = 0.06,
+    beta_blue_blue = 0.12
+  ),
+
+  epidemic = list(
+    gamma = 0.20,
+    alpha = 0.05,
+    alpha_deradicalization = 0.15,
+    alpha0_rad = 0.005,
+    alpha0_derad = 0.01,
+
+    gamma_epi = 0.05,
+    beta_red_red = 0.25,
+    beta_red_blue = 0.15,
+    beta_blue_red = 0.15,
+    beta_blue_blue = 0.25
+  )
+)
 #==========================
 # --- UI ---
 #==========================
@@ -38,37 +96,39 @@ ui <- fluidPage(
       #==========================
       # Simulation scenario
       #==========================
-      #
-      #       wellPanel(
-      #         radioButtons(
-      #           "parameter_mode",
-      #           "Simulation scenarios:",
-      #           choices = c(
-      #             "Manual" = "manual",
-      #             "Predefined scenario" = "scenario"
-      #           ),
-      #           selected = "manual"
-      #         ),
-      #
-      #         conditionalPanel(
-      #           condition = "input.parameter_mode == 'scenario'",
-      #         radioButtons(
-      #         "scenario",
-      #         "Simulation scenario:",
-      #         choices = c(
-      #           "Custom" = "custom",
-      #           "1. Resilient / Low-risk" = "resilient",
-      #           "2. Polarized / Segregated" = "polarized",
-      #           "3. Radicalization-dominated" = "radicalization",
-      #           "4. Epidemic-dominated" = "epidemic"
-      #         ),
-      #         selected = "resilient"
-      #       ),
-      #       textOutput("scenario_description")
-      #         ),
-      #
-      #
-      #       ),
+
+            wellPanel(
+              radioButtons(
+                "parameter_mode",
+                "Simulation scenarios:",
+                choices = c(
+                  "Manual" = "manual",
+                  "Predefined scenario" = "scenario"
+                ),
+                selected = "manual"
+              ),
+
+              conditionalPanel(
+                condition = "input.parameter_mode == 'scenario'",
+              radioButtons(
+              "scenario",
+              "Simulation scenario:",
+              choices = c(
+                "1. Resilient / Low-risk" = "resilient",
+                "2. Polarized / Segregated" = "polarized",
+                "3. Radicalization-dominated" = "radicalization",
+                "4. Epidemic-dominated" = "epidemic"
+              ),
+              selected = "resilient"
+            ),
+            textOutput("scenario_description"),
+
+            h5("Scenario parameters"),
+            tableOutput("scenario_parameters")
+              ),
+
+
+            ),
 
 
       # Section 2: Schelling
@@ -373,13 +433,50 @@ server <- function(input, output, session) {
         NULL
     )
 
+    # Apply scenario rates
+    if (input$parameter_mode == "scenario") {
+
+      p[names(SCENARIOS[[input$scenario]])] <-
+        SCENARIOS[[input$scenario]]
+    }
+
     # print("PARAMETERS:")
     # print(p)
     run_simulation(p)
 
 
   })
+  #==========================
+  # Scenario parameters
+  #==========================
 
+  output$scenario_parameters <- renderTable({
+
+    req(input$parameter_mode == "scenario")
+    req(input$scenario)
+
+    scenario <- SCENARIOS[[input$scenario]]
+
+    labels <- c(
+      gamma = "Opinion update rate",
+      alpha = "Radicalization rate",
+      alpha_deradicalization = "Deradicalization rate",
+      alpha0_rad = "Spontaneous radicalization",
+      alpha0_derad = "Spontaneous deradicalization",
+      gamma_epi = "Recovery rate",
+      beta_red_red = "Red → Red infection",
+      beta_blue_blue = "Blue → Blue infection",
+      beta_red_blue = "Red → Blue infection",
+      beta_blue_red = "Blue → Red infection"
+    )
+
+    data.frame(
+      Parameter = unname(labels[names(scenario)]),
+      Value = unname(unlist(scenario)),
+      row.names = NULL
+    )
+
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   #==========================
   # Section 6: Visualization
