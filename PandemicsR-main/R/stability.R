@@ -12,19 +12,38 @@
 # Stability monitoring
 # ------------------------------------------------------------
 create_stability_monitor <- function(
-   window = stability_window,
-    threshold = stability_threshold
+    window = stability_window,
+    threshold = stability_threshold,
+    trigger = "stability",
+    trigger_time = NULL
 ) {
 
   list(
     window = window,
     threshold = threshold,
 
+    trigger = trigger,
+    trigger_time = trigger_time,
+
     history = list(),
     stable_windows = 0,
     is_stable = FALSE
   )
 }
+# create_stability_monitor <- function(
+#    window = stability_window,
+#     threshold = stability_threshold
+# ) {
+#
+#   list(
+#     window = window,
+#     threshold = threshold,
+#
+#     history = list(),
+#     stable_windows = 0,
+#     is_stable = FALSE
+#   )
+# }
 
 
 # ------------------------------------------------------------
@@ -38,13 +57,11 @@ update_stability <- function(
 
   metrics <- calculate_stability_metrics(state)
 
-  # Add current observation
   monitor$history[[length(monitor$history) + 1]] <- list(
     time = time,
     metrics = metrics
   )
 
-  # Remove observations that are no longer needed
   cutoff <- time - monitor$window
 
   monitor$history <- Filter(
@@ -52,15 +69,53 @@ update_stability <- function(
     monitor$history
   )
 
-  # Calculate stability over the window
-  monitor$is_stable <- calculate_stability(
-    monitor$history,
-    window = monitor$window,
-    threshold = monitor$threshold
-  )
+  if (monitor$trigger == "time") {
+
+    monitor$is_stable <- time >= monitor$trigger_time
+
+  } else if (monitor$trigger == "stability") {
+
+    monitor$is_stable <- calculate_stability(
+      monitor$history,
+      window = monitor$window,
+      threshold = monitor$threshold
+    )
+
+  }
 
   monitor
 }
+# update_stability <- function(
+#     monitor,
+#     state,
+#     time
+# ) {
+#
+#   metrics <- calculate_stability_metrics(state)
+#
+#   # Add current observation
+#   monitor$history[[length(monitor$history) + 1]] <- list(
+#     time = time,
+#     metrics = metrics
+#   )
+#
+#   # Remove observations that are no longer needed
+#   cutoff <- time - monitor$window
+#
+#   monitor$history <- Filter(
+#     function(x) x$time >= cutoff,
+#     monitor$history
+#   )
+#
+#   # Calculate stability over the window
+#   monitor$is_stable <- calculate_stability(
+#     monitor$history,
+#     window = monitor$window,
+#     threshold = monitor$threshold
+#   )
+#
+#   monitor
+# }
 # ------------------------------------------------------------
 # Generic metric extraction
 # ------------------------------------------------------------

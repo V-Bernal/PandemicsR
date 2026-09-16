@@ -3,15 +3,7 @@
 #' Determine whether the simulation should stop.
 #'
 #' @param params Simulation parameters.
-#' @param opinions Agent opinions.
-#' @param B0 Initial network adjacency matrix.
 #' @param state Current simulation state.
-#' @param trackers Simulation trackers.
-#' @param network_state Current network state.
-#' @param stop_reason Current stopping reason.
-#' @param t Current simulation time.
-#' @param comp_time Computed event time.
-#' @param event_counter Event counter.
 #'
 #' @return Updated stopping state.
 #' @export

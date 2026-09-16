@@ -68,18 +68,23 @@ run_simulation <- function(params) {
   }
 
   #===========
-  # Stability if only epidemics start it immideitely
+  # Stability if only epidemics start it immediately
   #===========
   state$epidemic_started <- FALSE
   #state$epidemic_started <- isTRUE(params$runEpidemic) && !isTRUE(params$runVoter) &&
   #    !isTRUE(params$runSchelling)
 
 
+  # stability_monitor <- create_stability_monitor(
+  #   window = params$stability_window,
+  #   threshold = params$stability_threshold
+  # )
   stability_monitor <- create_stability_monitor(
     window = params$stability_window,
-    threshold = params$stability_threshold
+    threshold = params$stability_threshold,
+    trigger = params$epi_trigger,
+    trigger_time = params$epi_time
   )
-
   #===========
   # Trackers
   #===========
@@ -121,18 +126,20 @@ run_simulation <- function(params) {
     # Check stability
 
     # Start epidemic by time
-    if (params$epi_trigger == "time") {
-      #print('start epi time')
-      stability_monitor$is_stable <- (t >= params$epi_time)
-      #print(stability_monitor$is_stable)
-    }else{
+    # if (params$epi_trigger == "time") {
+    #   #print('start epi time')
+    #   stability_monitor$is_stable <- (t >= params$epi_time)
+    #   #print(stability_monitor$is_stable)
+    # }else{
+
+    # Check epidemic trigger
       stability_monitor <- update_stability(
         stability_monitor,
         state,
-        time = t
-      )
-    }
+        time = t)
+    # }
 
+    # Start epidemic
     if (
       !state$epidemic_started &&
       isTRUE(params$runEpidemic) &&

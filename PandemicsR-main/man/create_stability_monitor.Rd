@@ -6,7 +6,9 @@
 \usage{
 create_stability_monitor(
   window = stability_window,
-  threshold = stability_threshold
+  threshold = stability_threshold,
+  trigger = "stability",
+  trigger_time = NULL
 )
 }
 \arguments{
