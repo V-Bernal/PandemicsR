@@ -32,7 +32,16 @@ check_epidemic_position_indexes <- function(state) {
           seq_along(state$R_red_nodes)),
 
     all(state$R_blue_pos[state$R_blue_nodes] ==
-          seq_along(state$R_blue_nodes))
+          seq_along(state$R_blue_nodes)),
+
+    all(state$S_pos[state$S_nodes] ==
+          seq_along(state$S_nodes)),
+
+    all(state$I_pos[state$I_nodes] ==
+          seq_along(state$I_nodes)),
+
+    all(state$R_pos[state$R_nodes] ==
+          seq_along(state$R_nodes))
   )
 
   invisible(TRUE)
